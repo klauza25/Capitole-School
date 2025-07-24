@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - Capitole School</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .register-container {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+            transform: perspective(1000px) rotateY(-2deg) rotateX(5deg);
+            transition: all 0.3s ease;
+        }
+        .register-container:hover {
+            transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
+        }
+        .register-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+        .register-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        .register-header p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+        .register-body {
+            padding: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        .errorlist {
+            color: #e53e3e;
+            font-size: 0.9rem;
+            margin-top: 0.3rem;
+            background: #fed7d7;
+            padding: 0.5rem;
+            border-radius: 6px;
+            border-left: 4px solid #e53e3e;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+            color: #718096;
+        }
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 500px) {
+            .register-container {
+                transform: none;
+                margin: 10px;
+            }
+            .register-header, .register-body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1>Créer un compte</h1>
+            <p>Inscrivez-vous pour accéder à Capitole School</p>
+        </div>
+        <div class="register-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Nom d'utilisateur -->
+                <div class="form-group">
+                    {{ form.username.label_tag }}
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <div class="errorlist">{{ form.username.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Email -->
+                <div class="form-group">
+                    {{ form.email.label_tag }}
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="errorlist">{{ form.email.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Prénom -->
+                <div class="form-group">
+                    {{ form.first_name.label_tag }}
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                        <div class="errorlist">{{ form.first_name.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Nom -->
+                <div class="form-group">
+                    {{ form.last_name.label_tag }}
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                        <div class="errorlist">{{ form.last_name.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Rôle -->
+                <div class="form-group">
+                    {{ form.role.label_tag }}
+                    {{ form.role }}
+                    {% if form.role.errors %}
+                        <div class="errorlist">{{ form.role.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Mot de passe -->
+                <div class="form-group">
+                    {{ form.password1.label_tag }}
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}
+                        <div class="errorlist">{{ form.password1.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Confirmation mot de passe -->
+                <div class="form-group">
+                    {{ form.password2.label_tag }}
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}
+                        <div class="errorlist">{{ form.password2.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Bouton -->
+                <button type="submit" class="btn-primary">S'inscrire</button>
+            </form>
+
+            <!-- Lien vers connexion -->
+            <div class="login-link">
+                Déjà un compte ? <a href="{% url 'home:accueil' %}">Se connecter</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

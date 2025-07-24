@@ -1,0 +1,251 @@
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Dashboard Élève - Capitole School{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link active" href="#">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Mes notes</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Emploi du temps</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Messages</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Élève</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <i class="fas fa-home me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-clipboard me-2"></i> Notes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-calendar-alt me-2"></i> Emploi du temps
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-user me-2"></i> Profil
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-comment me-2"></i> Messages
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:logout' %}">
+                            <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">Bonjour, {{ user.username }} {{ user.last_name }}</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <button type="button" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-print me-1"></i> Imprimer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Profil rapide -->
+            <div class="card mb-4 bg-dark shadow">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        {% if utilisateur.photo %}
+                            <img src="{{ user.photo.url }}" class="rounded-circle me-4" style="width: 80px; height: 80px; object-fit: cover;">
+                        {% else %}
+                            <div class="avatar-large bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-4" style="width: 80px; height: 80px; font-size: 2rem; font-weight: bold;">
+                                {{ user.first_name|first }} {{ user.last_name|first }}
+                            </div>
+                        {% endif %}
+                        <div>
+                            <h3 class="text-white">{{ user.first_name }} {{ user.last_name }}</h3>
+                            <p class="text-muted mb-1">
+                                <strong>Matricule :</strong> {{ eleve.matricule }} |
+                                <strong>Genre :</strong> {{ eleve.get_genre_display }}
+                            </p>
+                            <p class="text-muted mb-1">
+                                <strong>Classe :</strong>
+                                {% if classe %}
+                                    {{ classe }}
+                                {% else %}
+                                    <span class="text-danger">Non assigné</span>
+                                {% endif %}
+                            </p>
+                            <p class="text-muted">
+                                <strong>Niveau :</strong>
+                                {{ niveau }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ notes.count }}</h5>
+                            <p class="card-text small">Notes</p>
+                            <i class="fas fa-clipboard fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ taux_presence }}%</h5>
+                            <p class="card-text small">Présence</p>
+                            <i class="fas fa-check-circle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning text-dark shadow-sm">
+                        <div class="card-body">
+                            {% comment %} <h5 class="card-title">{{ presences.filter(present=False).count }}</h5> {% endcomment %}
+                            <p class="card-text small">Absences</p>
+                            <i class="fas fa-times-circle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">1</h5>
+                            <p class="card-text small">Retard</p>
+                            <i class="fas fa-clock fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="card mb-4 bg-dark shadow">
+                <div class="card-header bg-gradient-primary d-flex align-items-center">
+                    <i class="fas fa-clipboard me-2"></i>
+                    <h5 class="mb-0">Mes notes (Trimestre 1)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th><i class="fas fa-book me-1"></i> Matière</th>
+                                    <th><i class="fas fa-sort-numeric-down me-1"></i> Note</th>
+                                    <th><i class="fas fa-comment me-1"></i> Commentaire</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for note in notes %}
+                                <tr class="align-middle">
+                                    <td class="fw-bold">{{ note.matiere.nom }}</td>
+                                    <td>
+                                        <span class="badge {% if note.note >= 15 %}bg-success{% elif note.note >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                            {{ note.note }}/20
+                                        </span>
+                                    </td>
+                                    <td>{{ note.commentaire|default:"-" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox me-2"></i> Aucune note disponible
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Présences récentes -->
+            <div class="card mb-4 bg-dark shadow">
+                <div class="card-header bg-gradient-success d-flex align-items-center">
+                    <i class="fas fa-calendar-check me-2"></i>
+                    <h5 class="mb-0">Présences récentes</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th><i class="fas fa-calendar me-1"></i> Date</th>
+                                    <th><i class="fas fa-user-check me-1"></i> Statut</th>
+                                    <th><i class="fas fa-comment me-1"></i> Justification</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for presence in presences %}
+                                <tr class="align-middle">
+                                    <td>{{ presence.date|date:"d M Y" }}</td>
+                                    <td>
+                                        <span class="badge {% if presence.present %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ presence.get_present_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ presence.justification|default:"-" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar-alt me-2"></i> Aucune présence enregistrée
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations médicales -->
+            {% if eleve.infos_medicaux %}
+            <div class="card mb-4 bg-dark shadow">
+                <div class="card-header bg-gradient-warning d-flex align-items-center">
+                    <i class="fas fa-heartbeat me-2"></i>
+                    <h5 class="mb-0">Informations médicales</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">{{ eleve.infos_medicaux }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Espace pour tester le scroll -->
+            <div style="height: 400px;"></div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Active menu item
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+</script>
+{% endblock %}

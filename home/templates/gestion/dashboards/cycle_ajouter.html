@@ -1,0 +1,28 @@
+<!-- templates/gestion/ajouter_cycle.html -->
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Ajouter un Cycle - Capitole School{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4>Ajouter un Cycle Scolaire</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% include "gestion/dashboards/cycle_form.html" %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                            <a href="{% url 'home:liste_cycles' %}" class="btn btn-secondary">Annuler</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

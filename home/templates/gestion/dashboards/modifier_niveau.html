@@ -1,0 +1,27 @@
+<!-- templates/gestion/modifier_niveau.html -->
+{% extends "gestion/base.html" %}
+{% block title %}Modifier un Niveau - Capitole School{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4>Modifier un Niveau</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% include "gestion/partials/niveau_form.html" %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">Mettre à jour</button>
+                            <a href="{% url 'home:liste_niveaux' %}" class="btn btn-secondary">Retour</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

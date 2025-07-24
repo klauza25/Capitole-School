@@ -1,0 +1,30 @@
+{% extends "gestion/base.html" %}
+{% block title %}Modifier un Cycle - Capitole School{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark">Modifier le Cycle : <strong>{{ cycle.nom }}</strong></h1>
+        <a href="{% url 'home:liste_cycles' %}" class="btn btn-secondary">← Retour</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="{{ form.nom.id_for_label }}" class="form-label">Nom du cycle</label>
+                    {{ form.nom }}
+                    {% if form.nom.errors %}
+                        <div class="text-danger">{{ form.nom.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                    <a href="{% url 'home:liste_cycles' %}" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

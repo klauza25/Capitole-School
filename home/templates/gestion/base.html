@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Capitole School{% endblock %}</title>
+    {% load static %}
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-width: 240px;
+            --navbar-height: 56px;
+        }
+
+        body {
+            background-color: #000000;
+            color: white;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* Navbar fixe */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: var(--navbar-height);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .navbar-brand::before {
+            content: "🎓";
+            font-size: 1.5rem;
+        }
+
+        /* Sidebar fixe */
+        .sidebar {
+            position: fixed;
+            top: var(--navbar-height);
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--navbar-height));
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            z-index: 1020;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            padding: 1rem;
+        }
+
+        .sidebar .nav-link {
+            color: #ccc;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #66CC00;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sidebar .nav-link i {
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar .nav-link span {
+            font-size: 0.95rem;
+        }
+
+        /* Main Content */
+        main {
+            position: fixed;
+            top: var(--navbar-height);
+            left: var(--sidebar-width);
+            right: 0;
+            bottom: 0;
+            padding: 1.5rem;
+            overflow-y: auto;
+            background-color: #121212;
+            transition: left 0.3s ease;
+        }
+
+        /* Responsive Mobile */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 200px;
+                z-index: 1030;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            main {
+                left: 0;
+            }
+            #main-content {
+                padding: 1rem;
+            }
+            .mobile-toggle {
+                display: block !important;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .navbar-brand {
+                font-size: 1.5rem;
+            }
+            .btn {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+    {% csrf_token %}
+    <script>
+        document.cookie = 'csrftoken=' + document.querySelector('[name=csrfmiddlewaretoken]').value + '; path=/;';
+    </script>
+</head>
+<body>
+
+    <!-- Navbar fixe -->
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Capitole School</a>
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-bell"></i>
+                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 32px; height: 32px; font-weight: bold;">
+                    {{ user.first_name|first }}
+                </div>
+                <!-- Bouton mobile -->
+                <button class="btn btn-sm btn-outline-light d-none mobile-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar fixe -->
+   
+    <!-- Sidebar fixe -->
+    <aside class="sidebar" id="sidebar">
+        <h5 class="mb-3 text-white">Menu</h5>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="{% url 'home:home' %}">
+                    <i class="fas fa-home"></i> <span>Tableau de bord</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:liste_cycles' %}">
+                    <i class="fas fa-book"></i> <span>Matières</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:liste_niveaux' %}">
+                    <i class="fas fa-users"></i> <span>Classes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-edit"></i> <span>Notes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-clipboard"></i> <span>Présences</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-chalkboard-teacher"></i> <span>Enseignants</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-user-graduate"></i> <span>Élèves</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-user-friends"></i> <span>Parents</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-file-invoice-dollar"></i> <span>Paiements</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-cog"></i> <span>Paramètres</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-danger" href="{% url 'home:logout' %}">
+                    <i class="fas fa-sign-out-alt"></i> <span>Déconnexion</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+
+
+    <!-- Overlay mobile -->
+    <div id="overlay" class="d-none" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1010; display: none;" onclick="closeSidebar()"></div>
+
+    <!-- Contenu scrollable -->
+    <main id="main-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const toggleBtn = document.querySelector('.mobile-toggle');
+
+        // Affiche le bouton sur mobile
+        if (window.innerWidth <= 768) {
+            toggleBtn.classList.remove('d-none');
+        }
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                toggleBtn.classList.add('d-none');
+                sidebar.classList.remove('open');
+                overlay.style.display = 'none';
+            } else {
+                toggleBtn.classList.remove('d-none');
+                sidebar.classList.remove('open');
+                overlay.style.display = 'none';
+            }
+        });
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('open');
+            overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.style.display = 'none';
+        }
+
+        // Active menu item
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function () {
+                document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                if (window.innerWidth <= 768) {
+                    closeSidebar();
+                }
+            });
+        });
+    </script>
+
+    <script>
+    // Fonction pour récupérer le CSRF token depuis les cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Ouvrir/Fermer le modal
+    function openModal() {
+        document.getElementById('loginModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('loginModal').style.display = 'none';
+    }
+
+    // Fermer en cliquant en dehors
+    window.onclick = function(event) {
+        const modal = document.getElementById('loginModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
+
+    // Intercepter la soumission du formulaire
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        const errorDiv = document.getElementById('loginError');
+        errorDiv.style.display = 'none';
+
+        if (!username) {
+            showError("Veuillez entrer un nom d'utilisateur ou un email.");
+            return;
+        }
+        if (!password) {
+            showError("Veuillez entrer votre mot de passe.");
+            return;
+        }
+
+        // Récupérer le CSRF token
+        const csrftoken = getCookie('csrftoken');
+
+        // Envoi avec fetch
+        fetch('{% url "home:login" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrftoken,
+            },
+            body: new URLSearchParams({
+                'username': username,
+                'password': password,
+                'csrfmiddlewaretoken': csrftoken
+            })
+        })
+        .then(response => {
+            if (response.status === 403) {
+                throw new Error("Erreur CSRF : jeton invalide");
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                showError(data.error || "Identifiants incorrects.");
+            }
+        })
+        .catch(err => {
+            console.error('Erreur:', err);
+            showError("Erreur de connexion. Veuillez réessayer.");
+        });
+    });
+
+    function showError(message) {
+        const errorDiv = document.getElementById('loginError');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+</script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

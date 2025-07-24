@@ -1,0 +1,16 @@
+<!-- templates/gestion/partials/niveau_form.html -->
+<div class="mb-3">
+    <label for="{{ form.cycle.id_for_label }}" class="form-label">Cycle</label>
+    {{ form.cycle }}
+    {% if form.cycle.errors %}
+        <div class="text-danger">{{ form.cycle.errors }}</div>
+    {% endif %}
+</div>
+<div class="mb-3">
+    <label for="{{ form.nom.id_for_label }}" class="form-label">Nom du niveau</label>
+    {{ form.nom }}
+    {% if form.nom.errors %}
+        <div class="text-danger">{{ form.nom.errors }}</div>
+    {% endif %}
+    <div class="text-muted small">Ex: 6e, 5e, 4e, 3e, 2nd, 1ère, Terminale</div>
+</div>

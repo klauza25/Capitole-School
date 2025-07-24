@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capitole School - Accueil</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo::before {
+            content: "🎓";
+            font-size: 2rem;
+        }
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+        }
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+        .login-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            padding: 0.5rem 1.5rem !important;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+        .login-btn:hover {
+            background: white;
+            color: #667eea !important;
+        }
+        /* Hamburger Menu */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            padding: 0.5rem;
+            z-index: 1001;
+        }
+        .hamburger span {
+            width: 25px;
+            height: 3px;
+            background: white;
+            margin: 3px 0;
+            transition: all 0.3s ease;
+            transform-origin: center;
+        }
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(6px, 6px);
+        }
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+        /* Mobile Navigation */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 80%;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            padding-top: 5rem;
+        }
+        .mobile-nav.active {
+            left: 0;
+        }
+        .mobile-nav-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .mobile-nav-links li {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .mobile-nav-links a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 1.5rem 2rem;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        .mobile-nav-links a:hover {
+            background: rgba(255,255,255,0.1);
+            padding-left: 2.5rem;
+        }
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .mobile-overlay.active {
+            opacity: 1;
+        }
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><polygon fill="rgba(255,255,255,0.1)" points="0,1000 1000,0 1000,1000"/></svg>');
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            padding-top: 5rem;
+            position: relative;
+            z-index: 2;
+        }
+        .hero-text h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: white;
+            line-height: 1.2;
+            animation: slideInLeft 1s ease-out;
+        }
+        .hero-text p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: rgba(255,255,255,0.9);
+            animation: slideInLeft 1s ease-out 0.2s both;
+        }
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            animation: slideInLeft 1s ease-out 0.4s both;
+        }
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+        .btn-secondary:hover {
+            background: white;
+            color: #667eea;
+            transform: translateY(-3px);
+        }
+        .hero-image {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: slideInRight 1s ease-out 0.6s both;
+        }
+        .dashboard-preview {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+            transform: perspective(1000px) rotateY(-5deg) rotateX(5deg);
+            transition: all 0.3s ease;
+        }
+        .dashboard-preview:hover {
+            transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
+        }
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        /* Features Section */
+        .features {
+            padding: 5rem 0;
+            background: #f8fafc;
+        }
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: #2d3748;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+        .feature-card p {
+            color: #718096;
+            line-height: 1.6;
+        }
+        /* Stats Section */
+        .stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 4rem 0;
+            color: white;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            text-align: center;
+        }
+        .stat-item h3 {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .stat-item p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        /* Login Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+        }
+        .modal-body {
+            padding: 2rem;
+        }
+        .close {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .close:hover {
+            transform: rotate(90deg);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .error-message {
+            display: none;
+            color: #e53e3e;
+            background: #fed7d7;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        /* Footer */
+        .footer {
+            background: #2d3748;
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+        }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            .hamburger {
+                display: flex;
+            }
+            .mobile-nav, .mobile-overlay {
+                display: block;
+            }
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 2rem;
+                padding-top: 3rem;
+            }
+            .hero-text h1 {
+                font-size: 2.5rem;
+            }
+            .hero-text p {
+                font-size: 1.1rem;
+            }
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            .btn {
+                width: 100%;
+                max-width: 280px;
+            }
+            .dashboard-preview {
+                transform: none;
+                margin-top: 2rem;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+            .stat-item h3 {
+                font-size: 2rem;
+            }
+            .section-title {
+                font-size: 2rem;
+            }
+            .modal-content {
+                margin: 10% auto;
+                width: 95%;
+                max-width: 350px;
+            }
+            .modal-header, .modal-body {
+                padding: 1.5rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .hero-text h1 {
+                font-size: 2rem;
+            }
+            .hero-text p {
+                font-size: 1rem;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .stat-item h3 {
+                font-size: 1.8rem;
+            }
+            .features {
+                padding: 3rem 0;
+            }
+            .stats {
+                padding: 3rem 0;
+            }
+            .container {
+                padding: 0 15px;
+            }
+        }
+        @media (max-width: 320px) {
+            .hero-text h1 {
+                font-size: 1.8rem;
+            }
+            .logo {
+                font-size: 1.5rem;
+            }
+            .btn {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CSRF Token -->
+  
+    <script>
+        // Stocker le token CSRF dans un cookie accessible en JS
+        document.cookie = 'csrftoken=' + document.querySelector('[name=csrfmiddlewaretoken]').value + '; path=/;';
+    </script>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav container">
+            <div class="logo">Capitole School</div>
+           <ul class="nav-links">
+    <li>
+        {% if user.is_authenticated %}
+            <span><a href="#accueil"><h3>{{ user.username }}</h3></a>
+            <a href="{% url 'home:logout' %}" style='font-size:18px; color:orange;'>Déconnexion</a>
+            </span>
+        {% else %}
+            <span style="color: #999;">Déconnecter</span>
+        {% endif %}
+    </li>
+    <li><a href="#accueil">Accueil</a></li>
+    <li><a href="#fonctionnalites">Fonctionnalités</a></li>
+    <li><a href="#" class="login-btn" onclick="openModal()">Connexion</a></li>
+</ul>
+
+            <div class="hamburger" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </header>
+
+   <!-- Mobile Navigation -->
+<div class="mobile-overlay" onclick="closeMobileMenu()"></div>
+<nav class="mobile-nav">
+    <ul class="mobile-nav-links">
+        <li>
+            {% if user.is_authenticated %}
+                <a href="#accueil" onclick="closeMobileMenu()"><h3>{{ user.username }}</h3></a>
+                <a href="{% url 'home:logout' %}" onclick="closeMobileMenu()">🚪 Déconnexion</a>
+            {% else %}
+                <a href="#" onclick="openModal(); closeMobileMenu();">🔐 Connexion</a>
+            {% endif %}
+        </li>
+        <li><a href="#accueil" onclick="closeMobileMenu()">🏠 Accueil</a></li>
+        <li><a href="#fonctionnalites" onclick="closeMobileMenu()">⚡ Fonctionnalités</a></li>
+    </ul>
+</nav>
+
+
+    <!-- Hero Section -->
+    <section class="hero" id="accueil">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>Bienvenue à Capitole School</h1>
+                    <p>Votre plateforme de gestion scolaire complète. Simplifiez l'administration, optimisez l'apprentissage et créez une expérience éducative d'excellence pour tous.</p>
+                    <div class="cta-buttons">
+                        <a href="#" class="btn btn-primary" onclick="openModal()">Commencer maintenant</a>
+                        <a href="#fonctionnalites" class="btn btn-secondary">Découvrir les fonctionnalités</a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="dashboard-preview">
+                        <div style="width: 300px; height: 200px; background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 1.2rem; font-weight: bold;">
+                            📊 Tableau de Bord<br>
+                            <a href="{% url 'home:eleve_dashboard' %}">Admin</a>
+                            📚 Gestion Complète
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="fonctionnalites">
+        <div class="container">
+            <h2 class="section-title">Fonctionnalités Principales</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">👥</span>
+                    <h3>Gestion des Étudiants</h3>
+                    <p>Inscriptions, dossiers académiques, suivi des présences et communication avec les parents.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">👨‍🏫</span>
+                    <h3>Gestion du Personnel</h3>
+                    <p>Administration des enseignants, emplois du temps, évaluations et gestion des ressources humaines.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📝</span>
+                    <h3>Notes et Évaluations</h3>
+                    <p>Saisie des notes, bulletins automatisés, statistiques et analyses de performance.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">💰</span>
+                    <h3>Gestion Financière</h3>
+                    <p>Facturation, paiements, bourses d'études et reporting financier complet.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📅</span>
+                    <h3>Planning et Horaires</h3>
+                    <p>Emplois du temps dynamiques, gestion des salles et planification des événements.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <h3>Rapports et Analytics</h3>
+                    <p>Tableaux de bord interactifs, rapports personnalisés et analyses prédictives.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>500+</h3>
+                    <p>Écoles utilisatrices</p>
+                </div>
+                <div class="stat-item">
+                    <h3>50,000+</h3>
+                    <p>Étudiants gérés</p>
+                </div>
+                <div class="stat-item">
+                    <h3>99.9%</h3>
+                    <p>Temps de disponibilité</p>
+                </div>
+                <div class="stat-item">
+                    <h3>24/7</h3>
+                    <p>Support technique</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>Connexion à Capitole School</h2>
+                <p>Accédez à votre tableau de bord sécurisé</p>
+            </div>
+            <div class="modal-body">
+                <!-- Formulaire POST classique -->
+              <!-- Formulaire POST classique -->
+<form method="post" action="{% url 'home:login' %}">
+  
+    {% csrf_token %}
+
+    <!-- Sélection du rôle (indicatif) -->
+    <div class="form-group">
+        
+    </div>
+
+    <!-- Identifiant -->
+    <div class="form-group">
+        <label for="username">Nom d’utilisateur ou email</label>
+        <input 
+            type="text" 
+            id="username" 
+            name="username" 
+            placeholder="Entrez votre identifiant" 
+            required 
+            autocomplete="username"
+        >
+    </div>
+
+    <!-- Mot de passe -->
+    <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            placeholder="Entrez votre mot de passe" 
+            required 
+            autocomplete="current-password"
+        >
+    </div>
+
+    <!-- Messages d'erreur Django -->
+    {% if messages %}
+        <div style="color: #e53e3e; background: #fed7d7; padding: 0.75rem; border-radius: 6px; text-align: center; margin-bottom: 0.5rem;">
+            {% for message in messages %}
+                {{ message }}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Bouton de connexion -->
+    <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem;">
+        Se connecter
+    </button>
+
+    <!-- Lien vers l'inscription -->
+    <div style="text-align: center;">
+        <a href="{% url 'home:register' %}" style="color: #667eea; text-decoration: none; font-size: 0.95rem;">
+            Pas encore de compte ? S'inscrire
+        </a>
+    </div>
+</form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Capitole School. Tous droits réservés. | Excellence éducative et innovation technologique.</p>
+        </div>
+    </footer>
+
+    <script>
+        // === Modal Functions ===
+        function openModal() {
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+
+        // Fermer en cliquant en dehors
+        window.onclick = function(event) {
+            const modal = document.getElementById('loginModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+
+        // === Mobile Menu Functions ===
+        function toggleMobileMenu() {
+            const hamburger = document.querySelector('.hamburger');
+            const mobileNav = document.querySelector('.mobile-nav');
+            const overlay = document.querySelector('.mobile-overlay');
+            hamburger.classList.toggle('active');
+            mobileNav.classList.toggle('active');
+            overlay.classList.toggle('active');
+            if (mobileNav.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function closeMobileMenu() {
+            const hamburger = document.querySelector('.hamburger');
+            const mobileNav = document.querySelector('.mobile-nav');
+            const overlay = document.querySelector('.mobile-overlay');
+            hamburger.classList.remove('active');
+            mobileNav.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.querySelectorAll('.mobile-nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                setTimeout(closeMobileMenu, 100);
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+
+        // === Smooth Scrolling ===
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // === Header Scroll Effect ===
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.header');
+            if (window.scrollY > 100) {
+                header.style.background = 'rgba(102, 126, 234, 0.95)';
+                header.style.boxShadow = '0 5px 20px rgba(0,0,0,0.1)';
+            } else {
+                header.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                header.style.boxShadow = 'none';
+            }
+        });
+
+        // === Animate Feature Cards on Scroll ===
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'all 0.6s ease';
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>

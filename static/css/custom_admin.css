@@ -1,0 +1,5 @@
+/* static/custom_admin.css */
+#header {
+    background-color: #004080 !important;  /* dark blue background */
+    color: white !important;               /* white text */
+}

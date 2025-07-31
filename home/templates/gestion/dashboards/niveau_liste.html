@@ -1,0 +1,81 @@
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Liste des Niveaux - Capitole School{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark">Gestion des Niveaux Scolaires</h1>
+        <a href="{% url 'home:ajouter_niveau' %}" class="btn btn-primary">+ Ajouter un niveau</a>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Tableau des niveaux -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Niveau</th>
+                            <th>Cycle</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for niveau in niveaux %}
+                        <tr>
+                            <td class="fw-bold">{{ niveau.nom }}</td>
+                            <td>{{ niveau.cycle.nom }}</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'home:modifier_niveau' niveau.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit me-1"></i> Modifier
+                                    </a>
+                                    <a href="{% url 'home:supprimer_niveau' niveau.pk %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i> Supprimer
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox me-2"></i> Aucun niveau trouvé.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info -->
+    <div class="mt-3 text-muted small">
+        <i class="fas fa-info-circle me-1"></i>
+        Un niveau appartient toujours à un cycle (ex: Primaire → 6e, 5e, 4e, 3e)
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Active le lien de la sidebar
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        if (link.getAttribute('href') === '/niveaux/') {
+            link.classList.add('active');
+        }
+    });
+</script>
+{% endblock %}

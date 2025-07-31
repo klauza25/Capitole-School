@@ -21,6 +21,7 @@ urlpatterns = [
     path('dashboard/parent/', views.parent_dashboard, name='parent_dashboard'),
     path('dashboard/secretaire/', views.secretaire_dashboard, name='secretaire_dashboard'),
     path('dashboard/surveillant/', views.surveillant_dashboard, name='surveillant_dashboard'),
+    path('parent/', views.parent_dashboard, name='parent_dashboard'),
     # === CYCLES ===
     path('cycles/', views.liste_cycles, name='liste_cycles'),
     path('cycles/ajouter/', views.ajouter_cycle, name='ajouter_cycle'),
@@ -32,4 +33,25 @@ urlpatterns = [
     path('niveaux/ajouter/', views.ajouter_niveau, name='ajouter_niveau'),
     path('niveaux/<int:pk>/modifier/', views.modifier_niveau, name='modifier_niveau'),
     path('niveaux/<int:pk>/supprimer/', views.supprimer_niveau, name='supprimer_niveau'),
+    
+    path('classes/ajouter/', views.ajouter_classe, name='ajouter_classe'),
+    path('classes/<int:pk>/modifier/', views.modifier_classe, name='modifier_classe'),
+    path('classes/', views.liste_classes, name='liste_classes'),
+    path('classes/<int:pk>/supprimer/', views.supprimer_classe, name='supprimer_classe'),
+    
+    path('cycles/', views.liste_cycles, name='liste_cycles'),
+    path('niveaux/', views.liste_niveaux, name='liste_niveaux'),
+    path('classes/', views.liste_classes, name='liste_classes'),
+    path('eleves/', views.liste_eleves, name='liste_eleves'),
+    path('enseignants/', views.liste_enseignants, name='liste_enseignants'),
+    path('parents/', views.liste_parents, name='liste_parents'),
+    # === ÉLÈVES ===
+    path('eleves/', views.liste_eleves, name='liste_eleves'),
+    path('eleves/ajouter/', views.ajouter_eleve, name='ajouter_eleve'),
+    path('eleves/<int:pk>/modifier/', views.modifier_eleve, name='modifier_eleve'),
+    path('eleves/<int:pk>/supprimer/', views.supprimer_eleve, name='supprimer_eleve'),
+    path('enseignants/', views.liste_enseignants, name='liste_enseignants'),
+    path('enseignants/ajouter/', views.ajouter_enseignant, name='ajouter_enseignant'),
+    path('enseignants/<int:pk>/modifier/', views.modifier_enseignant, name='modifier_enseignant'),
+    path('enseignants/<int:pk>/supprimer/', views.supprimer_enseignant, name='supprimer_enseignant'),
 ]

@@ -1,0 +1,78 @@
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Liste des Classes - Capitole School{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark">Gestion des Classes</h1>
+        <a href="{% url 'home:ajouter_classe' %}" class="btn btn-primary">+ Ajouter une classe</a>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Tableau des classes -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nom</th>
+                            <th>Niveau</th>
+                            <th>Cycle</th>
+                            <th>Effectif</th>
+                            <th>Max</th>
+                            <th>Taux</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for classe in classes %}
+                        <tr>
+                            <td class="fw-bold">{{ classe.nom }}</td>
+                            <td>{{ classe.niveau.nom }}</td>
+                            <td>{{ classe.niveau.cycle.nom }}</td>
+                            <td>{{ classe.eleve_set.count }}</td>
+                            <td>{{ classe.effectif_max }}</td>
+                            <td>
+                                {% if classe.effectif_max > 0 %}
+                                    {% widthratio classe.eleve_set.count classe.effectif_max 100 as taux %}
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: {{ taux }}%"></div>
+                                    </div>
+                                    <small>{{ taux|floatformat }}%</small>
+                                {% else %}
+                                    <span class="text-muted">Illimité</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'home:modifier_classe' classe.pk %}" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                    <a href="{% url 'home:supprimer_classe' classe.pk %}" class="btn btn-sm btn-outline-danger">Supprimer</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox me-2"></i> Aucune classe trouvée.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

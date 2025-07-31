@@ -1,0 +1,63 @@
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Confirmer la suppression - Capitole School{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark">⚠️ Confirmer la suppression</h1>
+        <a href="{% url 'home:liste_cycles' %}" class="btn btn-secondary">← Retour</a>
+    </div>
+
+    <!-- Alerte rouge -->
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Attention : Suppression irréversible
+        </h4>
+        <p>
+            Vous êtes sur le point de supprimer le cycle suivant :
+        </p>
+        <div class="bg-light p-3 rounded mb-3">
+            <strong>Cycle :</strong> <span class="text-danger">{{ cycle.nom }}</span>
+        </div>
+        <p class="mb-0">
+            <strong class="text-danger">Cette action est définitive.</strong><br>
+            Tous les niveaux, classes, et données associés à ce cycle seront <strong>supprimés définitivement</strong>.
+        </p>
+    </div>
+
+    <!-- Formulaire de confirmation -->
+    <form method="post">
+        {% csrf_token %}
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger btn-lg">
+                <i class="fas fa-trash me-2"></i> Oui, supprimer le cycle
+            </button>
+            <a href="{% url 'home:liste_cycles' %}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times me-2"></i> Annuler
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Active le lien "Cycles" dans la sidebar
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        if (link.getAttribute('href') === '/cycles/') {
+            link.classList.add('active');
+        }
+    });
+
+    // Confirmation JavaScript supplémentaire
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const confirmed = confirm("⚠️ Êtes-vous ABSOLUMENT sûr de vouloir supprimer ce cycle ?\nTous les niveaux et classes associés seront perdus.");
+        if (!confirmed) {
+            e.preventDefault();
+        }
+    });
+</script>
+{% endblock %}

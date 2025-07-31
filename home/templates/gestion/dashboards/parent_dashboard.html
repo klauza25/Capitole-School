@@ -1,0 +1,107 @@
+<!-- templates/gestion/dashboards/parent_dashboard.html -->
+{% extends "gestion/base.html" %}
+{% block title %}Dashboard Parent - Capitole School{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link active" href="#">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Mes enfants</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Bulletins</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <!-- Sidebar fixe -->
+    <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarMenu">
+        <div class="position-sticky vh-100 py-3">
+            <h5 class="px-3 mb-3 text-white">Parent</h5>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">
+                        <i class="fas fa-home me-2"></i> Tableau de bord
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="fas fa-user-graduate me-2"></i> Mes enfants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="fas fa-clipboard me-2"></i> Notes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="fas fa-calendar-alt me-2"></i> Emploi du temps
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-danger" href="{% url 'home:logout' %}">
+                        <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2 text-white">Bonjour, {{ user.first_name }} {{ user.last_name }}</h1>
+        </div>
+
+        {% if enfants_avec_notes %}
+            {% for data in enfants_avec_notes %}
+                <div class="card mb-4 bg-dark shadow">
+                    <div class="card-header bg-gradient-primary">
+                        <h5>{{ data.eleve.utilisateur.get_full_name }} - {{ data.eleve.classe_actuelle }}</h5>
+                        <p class="mb-0">Moyenne T1 : <strong>{{ data.moyenne_t1 }}/20</strong></p>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover mb-0">
+                                <thead class="table-secondary">
+                                    <tr>
+                                        <th>Matière</th>
+                                        <th>Devoir 1</th>
+                                        <th>Devoir 2</th>
+                                        <th>Devoir 3</th>
+                                        <th>Examen</th>
+                                        <th>Départ.</th>
+                                        <th>Moyenne</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for note in data.notes_t1 %}
+                                    <tr>
+                                        <td>{{ note.matiere.nom }}</td>
+                                        <td>{{ note.devoir_1|default:"-" }}</td>
+                                        <td>{{ note.devoir_2|default:"-" }}</td>
+                                        <td>{{ note.devoir_3|default:"-" }}</td>
+                                        <td>{{ note.examen_trimestriel|default:"-" }}</td>
+                                        <td>{{ note.devoir_departemental|default:"-" }}</td>
+                                        <td><strong>{{ note.moyenne_trimestrielle }}</strong></td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            Aucune note disponible pour ce trimestre.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-user-graduate me-2"></i>
+                Aucun enfant n'est associé à votre compte. Contactez l'administration.
+            </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

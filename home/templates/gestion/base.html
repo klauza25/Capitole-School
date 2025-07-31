@@ -132,11 +132,11 @@
     <!-- Navbar fixe -->
     <nav class="navbar navbar-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Capitole School</a>
+            <a class="navbar-brand" href="{% url 'home:home' %}">Capitole School</a>
             <div class="d-flex align-items-center gap-2">
                 <i class="fas fa-bell"></i>
                 <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 32px; height: 32px; font-weight: bold;">
-                    {{ user.first_name|first }}
+                    {{ user.first_name|first|upper }}
                 </div>
                 <!-- Bouton mobile -->
                 <button class="btn btn-sm btn-outline-light d-none mobile-toggle" onclick="toggleSidebar()">
@@ -146,30 +146,127 @@
         </div>
     </nav>
 
-    <!-- Sidebar fixe -->
-   
-    <!-- Sidebar fixe -->
-    <aside class="sidebar" id="sidebar">
-        <h5 class="mb-3 text-white">Menu</h5>
-        <ul class="nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link active" href="{% url 'home:home' %}">
-                    <i class="fas fa-home"></i> <span>Tableau de bord</span>
-                </a>
-            </li>
+   <!-- Sidebar fixe -->
+<aside class="sidebar" id="sidebar">
+    <h5 class="mb-3 text-white">Menu</h5>
+    <ul class="nav flex-column">
+
+        <!-- Tableau de bord (tous les rôles) -->
+        <li class="nav-item">
+            <a class="nav-link active" href="{% url 'home:home' %}">
+                <i class="fas fa-home"></i> <span>Tableau de bord</span>
+            </a>
+        </li>
+
+        <!-- Admin, Directeur, Secrétaire -->
+
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'home:liste_cycles' %}">
-                    <i class="fas fa-book"></i> <span>Matières</span>
+                    <i class="fas fa-book"></i> <span>Cycles</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'home:liste_niveaux' %}">
+                    <i class="fas fa-layer-group"></i> <span>Niveaux</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:liste_classes' %}">
                     <i class="fas fa-users"></i> <span>Classes</span>
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:liste_eleves' %}">
+                    <i class="fas fa-user-graduate"></i> <span>Élèves</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:liste_enseignants' %}">
+                    <i class="fas fa-chalkboard-teacher"></i> <span>Enseignants</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:liste_parents' %}">
+                    <i class="fas fa-user-friends"></i> <span>Parents</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" href="#">
+                    <i class="fas fa-file-invoice-dollar"></i> <span>Paiements</span>
+                </a>
+            </li>
+       
+
+        <!-- Enseignant -->
+       
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                    <i class="fas fa-book"></i> <span>Matières</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                    <i class="fas fa-users"></i> <span>Classes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
                     <i class="fas fa-edit"></i> <span>Notes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                    <i class="fas fa-clipboard"></i> <span>Présences</span>
+                </a>
+            </li>
+      
+<!-- Dans la sidebar, pour admin/directeur/secretaire -->
+
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'home:liste_enseignants' %}">
+            <i class="fas fa-chalkboard-teacher"></i> <span>Enseignants</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'home:liste_parents' %}">
+            <i class="fas fa-user-friends"></i> <span>Parents</span>
+        </a>
+    </li>
+
+        <!-- Élève -->
+        
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
+                    <i class="fas fa-clipboard"></i> <span>Mes Notes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
+                    <i class="fas fa-clipboard"></i> <span>Présences</span>
+                </a>
+            </li>
+      
+
+        <!-- Parent -->
+        
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-user-graduate"></i> <span>Mes Enfants</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-clipboard"></i> <span>Notes</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -182,46 +279,49 @@
                     <i class="fas fa-clipboard"></i> <span>Présences</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-chalkboard-teacher"></i> <span>Enseignants</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-user-graduate"></i> <span>Élèves</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-user-friends"></i> <span>Parents</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-file-invoice-dollar"></i> <span>Paiements</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-cog"></i> <span>Paramètres</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-danger" href="{% url 'home:logout' %}">
-                    <i class="fas fa-sign-out-alt"></i> <span>Déconnexion</span>
-                </a>
-            </li>
-        </ul>
-    </aside>
+       
 
+        <!-- Surveillant -->
+      
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-clipboard"></i> <span>Présences</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-exclamation-triangle"></i> <span>Incidents</span>
+                </a>
+            </li>
+      
+
+        <!-- Paramètres (tous les rôles) -->
+        <li class="nav-item">
+            <a class="nav-link" href="#">
+                <i class="fas fa-cog"></i> <span>Paramètres</span>
+            </a>
+        </li>
+
+        <!-- Déconnexion (tous les rôles) -->
+        <li class="nav-item">
+            <a class="nav-link text-danger" href="{% url 'home:logout' %}">
+                <i class="fas fa-sign-out-alt"></i> <span>Déconnexion</span>
+            </a>
+        </li>
+    </ul>
+</aside>
 
 
     <!-- Overlay mobile -->
     <div id="overlay" class="d-none" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1010; display: none;" onclick="closeSidebar()"></div>
 
     <!-- Contenu scrollable -->
-    <main id="main-content">
+    <main id="main-content" class="bg-white">
         {% block content %}
         {% endblock %}
     </main>

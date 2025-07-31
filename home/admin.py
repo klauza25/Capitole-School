@@ -1,6 +1,17 @@
 from django.contrib import admin
 from .models import *
 
+
+admin.site.site_header = "Capitole School"
+admin.site.site_title = "Capitole School Admin"
+admin.site.index_title = "Welcome to Capitole bilingue school Admin"
+
+
+
+
+
+
+
 @admin.register(Utilisateur)
 class UtilisateurAdmin(admin.ModelAdmin):
     list_display = ('username', 'first_name', 'last_name', 'role', 'telephone')

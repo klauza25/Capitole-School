@@ -34,7 +34,12 @@ class Utilisateur(AbstractUser):
 # ---------------------
 # Cycles, Niveaux, Classes
 # ---------------------
+class Parent(models.Model):
+    utilisateur = models.OneToOneField(Utilisateur, on_delete=models.CASCADE, related_name='parent_profile')
+    enfants = models.ManyToManyField('Eleve', verbose_name="Enfants", related_name='parents')
 
+    def __str__(self):
+        return f"{self.utilisateur.get_full_name()} (Parent)"
 
 class Cycle(models.Model):
     nom = models.CharField(_("Nom du cycle"), max_length=50, unique=True)

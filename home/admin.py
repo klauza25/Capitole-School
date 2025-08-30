@@ -47,11 +47,56 @@ class MatiereAdmin(admin.ModelAdmin):
 class EnseignementAdmin(admin.ModelAdmin):
     list_display = ('matiere', 'enseignant')
 
-@admin.register(Note)
-class NoteAdmin(admin.ModelAdmin):
-    list_display = ('eleve', 'matiere', 'trimestre', 'note')
-    list_filter = ('trimestre', 'matiere', 'eleve__classe_actuelle')
+# admin.py
 
+
+
+
+class NoteAdmin(admin.ModelAdmin):
+    # Afficher uniquement les champs qui existent dans le modèle
+    list_display = [
+        'eleve',
+        'matiere',
+        'trimestre',
+        'type_evaluation',  # Utilisez ce champ si vous avez ce modèle
+        'valeur',
+        'get_devoir_display',  # Si vous utilisez un champ personnalisé
+        'date_evaluation'  # Utilisez le bon nom de champ
+    ]
+    
+    # Filtres basés sur des champs existants
+    list_filter = [
+        'trimestre',
+        'type_evaluation',  # Utilisez ce champ si vous avez ce modèle
+        'matiere',
+        'eleve__classe_actuelle'
+    ]
+    
+    # Recherche par champs existants
+    search_fields = [
+        'eleve__utilisateur__first_name',
+        'eleve__utilisateur__last_name',
+        'matiere__nom'
+    ]
+    
+    # Pagination
+    list_per_page = 25
+    
+    # Si vous voulez afficher 'devoir' mais que ce n'est pas un champ direct
+    def get_devoir_display(self, obj):
+        # Si vous avez un champ personnalisé ou une logique spécifique
+        if obj.type_evaluation == 'DS1':
+            return 'Devoir 1'
+        elif obj.type_evaluation == 'DS2':
+            return 'Devoir 2'
+        elif obj.type_evaluation == 'DS3':
+            return 'Devoir 3'
+        elif obj.type_evaluation == 'COMP':
+            return 'Composition'
+        return obj.type_evaluation
+    get_devoir_display.short_description = 'Devoir'
+
+admin.site.register(Note, NoteAdmin)
 @admin.register(Frais)
 class FraisAdmin(admin.ModelAdmin):
     list_display = ('nom', 'niveau', 'montant', 'date_limite')
@@ -75,3 +120,6 @@ class MessageAdmin(admin.ModelAdmin):
 class DocumentAdmin(admin.ModelAdmin):
     list_display = ('nom', 'eleve', 'type', 'date_creation')
     list_filter = ('type',)
+    
+    
+admin.site.register(Parent)

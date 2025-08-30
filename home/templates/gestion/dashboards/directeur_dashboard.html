@@ -1,0 +1,477 @@
+<!-- templates/gestion/dashboards/directeur_dashboard.html -->
+{% extends "gestion/base.html" %}
+{% load humanize %}
+{% load custom_filters %}
+
+{% load static %}
+{% block title %}Dashboard Directeur - Capitole School{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link active" href="#">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Statistiques</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Gestion</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Rapports</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Directeur</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-home me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-chart-line me-2"></i> Statistiques
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-users me-2"></i> Gestion élèves
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-chalkboard-teacher me-2"></i> Gestion enseignants
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-file-invoice-dollar me-2"></i> Finances
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-cog me-2"></i> Paramètres
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-danger" href="{% url 'home:logout' %}">
+                            <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">
+                    Bonjour, <strong>{{ user.role|title }}</strong> - {{ user.first_name }} {{ user.last_name }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-calendar me-1"></i> {{ annee_en_cours }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="#">2023-2024</a></li>
+                            <li><a class="dropdown-item" href="#">2024-2025</a></li>
+                            <li><a class="dropdown-item" href="#">2025-2026</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-light" id="printButton">
+                        <i class="fas fa-print me-1"></i> Imprimer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistiques globales -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_eleves }}</h5>
+                            <p class="card-text small">Élèves</p>
+                            <i class="fas fa-user-graduate fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_enseignants }}</h5>
+                            <p class="card-text small">Enseignants</p>
+                            <i class="fas fa-chalkboard-teacher fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning text-dark shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_classes }}</h5>
+                            <p class="card-text small">Classes</p>
+                            <i class="fas fa-school fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ taux_presence_global }}%</h5>
+                            <p class="card-text small">Présence globale</p>
+                            <i class="fas fa-calendar-check fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques financières -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-primary d-flex align-items-center">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>
+                            <h5 class="mb-0">Statistiques financières ({{ annee_en_cours }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h6 class="text-white">Taux de paiement</h6>
+                                    <p class="text-muted mb-0">Trimestre {{ trimestre_en_cours|slice:"1" }}</p>
+                                </div>
+                                <h3 class="text-white mb-0">{{ taux_paiement }}%</h3>
+                            </div>
+                            <div class="progress mb-4" style="height: 20px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ taux_paiement }}%">
+                                    {{ taux_paiement }}%
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-dark rounded mb-2">
+                                        <small class="text-muted d-block">Total frais</small>
+                                        <strong class="text-white">{{ total_frais|floatformat:0 }} XAF</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-dark rounded mb-2">
+                                        <small class="text-muted d-block">Total payé</small>
+                                        <strong class="text-white">{{ total_paiements|floatformat:0 }} XAF</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performances académiques -->
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-success d-flex align-items-center">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            <h5 class="mb-0">Performances académiques</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="performancesChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tableaux de bord -->
+            <div class="row g-4">
+                <!-- Niveaux par performance -->
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-warning d-flex align-items-center">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            <h5 class="mb-0">Performance par niveau</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover mb-0">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th>Niveau</th>
+                                            <th>Moyenne</th>
+                                            <th>Élèves</th>
+                                            <th>Progression</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for niveau in niveaux_stats %}
+                                        <tr>
+                                            <td>{{ niveau.niveau }}</td>
+                                            <td>
+                                                <span class="badge bg-primary fs-6">
+                                                    {{ niveau.moyenne|floatformat:2 }}/20
+                                                </span>
+                                            </td>
+                                            <td>{{ niveau.eleves }}</td>
+                                            <td>
+                                               <div class="progress-bar bg-success" role="progressbar" 
+     style="width: {{ niveau.pourcentage }}%"></div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Matières les plus performantes -->
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-info d-flex align-items-center">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            <h5 class="mb-0">Top 5 des matières</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover mb-0">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th>Matière</th>
+                                            <th>Niveau</th>
+                                            <th>Moyenne</th>
+                                            <th>Élèves</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for matiere in matieres_performance %}
+                                        <tr>
+                                            <td>{{ matiere.matiere.nom }}</td>
+                                            <td>{{ matiere.matiere.niveau }}</td>
+                                            <td>
+                                                <span class="badge bg-success fs-6">
+                                                    {{ matiere.moyenne|floatformat:2 }}/20
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {{ matiere.matiere.notes.count }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Élèves en difficulté -->
+            <div class="card mt-4 bg-dark shadow">
+                <div class="card-header bg-gradient-danger d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <h5 class="mb-0">Élèves en difficulté (Trimestre {{ trimestre_en_cours|slice:"1" }})</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>Élève</th>
+                                    <th>Classe</th>
+                                    <th>Moyenne</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for eleve_data in eleves_difficulte %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if eleve_data.eleve.utilisateur.photo %}
+                                                <img src="{{ eleve_data.eleve.utilisateur.photo.url }}" 
+                                                     class="rounded-circle me-2" 
+                                                     style="width: 30px; height: 30px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                                    {{ eleve_data.eleve.utilisateur.first_name|first|upper }}{{ eleve_data.eleve.utilisateur.last_name|first|upper }}
+                                                </div>
+                                            {% endif %}
+                                            {{ eleve_data.eleve.utilisateur.get_full_name }}
+                                        </div>
+                                    </td>
+                                    <td>{{ eleve_data.eleve.classe_actuelle|default:"Non assigné" }}</td>
+                                    <td>
+                                        <span class="badge bg-danger fs-5">
+                                            {{ eleve_data.moyenne|floatformat:2 }}/20
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary" title="Contacter parent">
+                                                <i class="fas fa-phone"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-warning" title="Plan d'action">
+                                                <i class="fas fa-clipboard-list"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-info" title="Voir détails">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        Aucun élève en difficulté détecté
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications et événements -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-primary d-flex align-items-center">
+                            <i class="fas fa-bell me-2"></i>
+                            <h5 class="mb-0">Notifications récentes</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for notification in notifications_recentes %}
+                                <a href="#" class="list-group-item list-group-item-action d-flex gap-3 py-3 bg-dark text-white">
+                                    <i class="{{ notification.get_icone }} fs-4"></i>
+                                    <div class="d-flex gap-2 w-100 justify-content-between">
+                                        <div>
+                                            <h6 class="mb-0">{{ notification.objet }}</h6>
+                                            <p class="mb-0 opacity-75">{{ notification.message|truncatechars:60 }}</p>
+                                          {% load custom_filters %}
+<small class="text-muted">
+    <i class="far fa-clock me-1"></i>
+    {{ notification.date_creation|naturaltime }}
+</small>
+                                        </div>
+                                        {% if notification.statut == 'NON_LU' %}
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-danger rounded-pill">Nouveau</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </a>
+                                {% empty %}
+                                <div class="text-center py-4 text-muted">
+                                    <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                                    <p>Aucune notification récente</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Événements récents -->
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-success d-flex align-items-center">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <h5 class="mb-0">Événements récents</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for evenement in evenements_recents %}
+                                <div class="list-group-item bg-dark text-white">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ evenement.description }}</h6>
+                                        <small class="text-muted">{{ evenement.date }}</small>
+                                    </div>
+                                    <p class="mb-1">
+                                        <span class="badge bg-info">{{ evenement.type }}</span>
+                                    </p>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-4 text-muted">
+                                    <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                                    <p>Aucun événement récent</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Espace pour tester le scroll -->
+            <div style="height: 400px;"></div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Active menu item
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Ferme la sidebar sur mobile après clic
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebarMenu');
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+    
+    // Gestion de l'impression
+    document.getElementById('printButton').addEventListener('click', function() {
+        window.print();
+    });
+    
+    // Graphique des performances
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('performancesChart').getContext('2d');
+        const performancesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [{% for niveau in niveaux_stats %}"{{ niveau.niveau }}",{% endfor %}],
+                datasets: [{
+                    label: 'Moyenne générale',
+                    data: [{% for niveau in niveaux_stats %}{{ niveau.moyenne|floatformat:1 }},{% endfor %}],
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 20,
+                        title: {
+                            display: true,
+                            text: 'Moyenne sur 20'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

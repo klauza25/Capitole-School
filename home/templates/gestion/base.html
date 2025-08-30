@@ -142,6 +142,11 @@
                 <button class="btn btn-sm btn-outline-light d-none mobile-toggle" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
+                {% load notification_extras %}
+
+{% if request.user|has_unread_notifications %}
+    <!-- Afficher le badge de notification -->
+{% endif %}
             </div>
         </div>
     </nav>

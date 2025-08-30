@@ -1,13 +1,13 @@
-<!-- templates/gestion/dashboards/enseignants_liste.html -->
+<!-- templates/gestion/dashboards/parents_liste.html -->
 {% extends "gestion/base.html" %}
-{% block title %}Liste des Enseignants - Capitole School{% endblock %}
+{% block title %}Liste des Parents - Capitole School{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- En-tête -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 text-dark">Gestion des Enseignants ({{ total }})</h1>
-        <a href="{% url 'home:ajouter_enseignant' %}" class="btn btn-primary">+ Ajouter un enseignant</a>
+        <h1 class="h3 text-dark">Gestion des Parents ({{ total }})</h1>
+        <a href="{% url 'home:ajouter_parent' %}" class="btn btn-primary">+ Ajouter un parent</a>
     </div>
 
     <!-- Messages -->
@@ -20,7 +20,7 @@
         {% endfor %}
     {% endif %}
 
-    <!-- Tableau des enseignants -->
+    <!-- Tableau des parents -->
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -31,35 +31,47 @@
                             <th>Nom</th>
                             <th>Email</th>
                             <th>Téléphone</th>
+                            <th>Enfants</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user in enseignants %}
+                        {% for data in parents_data %}
                         <tr>
                             <td>
-                                {% if user.photo %}
-                                    <img src="{{ user.photo.url }}" class="rounded-circle" width="40" height="40" style="object-fit: cover;">
+                                {% if data.user.photo %}
+                                    <img src="{{ data.user.photo.url }}" class="rounded-circle" width="40" height="40" style="object-fit: cover;">
                                 {% else %}
                                     <div class="avatar-xs bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">
-                                        {{ user.first_name|first }}{{ user.last_name|first }}
+                                        {{ data.user.first_name|first }}{{ data.user.last_name|first }}
                                     </div>
                                 {% endif %}
                             </td>
-                            <td>{{ user.first_name }} {{ user.last_name }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.telephone|default:"-" }}</td>
+                            <td>{{ data.user.first_name }} {{ data.user.last_name }}</td>
+                            <td>{{ data.user.email }}</td>
+                            <td>{{ data.user.telephone|default:"-" }}</td>
+                            <td>
+                                {% if data.enfants %}
+                                    <ul class="list-unstyled mb-0">
+                                        {% for eleve in data.enfants %}
+                                            <li>{{ eleve.utilisateur.get_full_name }} <small class="text-muted">({{ eleve.classe_actuelle|default:"Non assigné" }})</small></li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <span class="text-muted">Aucun enfant</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <div class="d-flex gap-2">
-                                    <a href="{% url 'home:modifier_enseignant' user.pk %}" class="btn btn-sm btn-outline-primary">Modifier</a>
-                                    <a href="{% url 'home:supprimer_enseignant' user.pk %}" class="btn btn-sm btn-outline-danger">Supprimer</a>
+                                    <a href="{% url 'home:modifier_parent' data.user.pk %}" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                    <a href="{% url 'home:supprimer_parent' data.user.pk %}" class="btn btn-sm btn-outline-danger">Supprimer</a>
                                 </div>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
-                                <i class="fas fa-chalkboard-teacher me-2"></i> Aucun enseignant trouvé.
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-user-friends me-2"></i> Aucun parent trouvé.
                             </td>
                         </tr>
                         {% endfor %}

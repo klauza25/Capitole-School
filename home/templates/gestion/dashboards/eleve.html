@@ -1,5 +1,6 @@
 {% extends "gestion/base.html" %}
 {% load static %}
+
 {% block title %}Dashboard Élève - Capitole School{% endblock %}
 
 {% block nav_links %}
@@ -14,32 +15,32 @@
 <div class="container-fluid p-0">
     <div class="row g-0">
         <!-- Sidebar Fixe -->
-        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarMenu">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
             <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
                 <h5 class="px-3 mb-3 text-white">Élève</h5>
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#">
+                        <a class="nav-link active text-white" href="#">
                             <i class="fas fa-home me-2"></i> Tableau de bord
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link text-white" href="#">
                             <i class="fas fa-clipboard me-2"></i> Notes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link text-white" href="#">
                             <i class="fas fa-calendar-alt me-2"></i> Emploi du temps
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link text-white" href="#">
                             <i class="fas fa-user me-2"></i> Profil
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link text-white" href="#">
                             <i class="fas fa-comment me-2"></i> Messages
                         </a>
                     </li>
@@ -56,68 +57,72 @@
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
             <!-- Header -->
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2 text-white">Bonjour, {{ user.first_name }} {{ user.last_name }}</h1>
+                <h1 class="h2 text-white">Bonjour, <strong>{{ user.role|title }}</strong> - {{ user.first_name }} {{ user.last_name }}</h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
-                    <button type="button" class="btn btn-sm btn-outline-light">
+                    <button type="button" class="btn btn-sm btn-outline-light" id="printButton">
                         <i class="fas fa-print me-1"></i> Imprimer
                     </button>
                 </div>
             </div>
 
-          <!-- Profil rapide -->
-<div class="card mb-4 bg-dark shadow">
-    <div class="card-body">
-        <div class="d-flex align-items-center">
-            <!-- Affichage de la photo -->
-            {% if user.photo %}
-                <img src="{{ user.photo.url }}" class="rounded-circle me-4" style="width: 80px; height: 80px; object-fit: cover;" id="currentPhoto">
-            {% else %}
-                <div class="avatar-large bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-4" style="width: 80px; height: 80px; font-size: 2rem; font-weight: bold;" id="currentPhoto">
-                    {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+            <!-- Profil rapide -->
+            <div class="card mb-4 bg-dark shadow">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <!-- Affichage de la photo -->
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" class="rounded-circle me-4" style="width: 80px; height: 80px; object-fit: cover;" id="currentPhoto">
+                        {% else %}
+                            <div class="avatar-large bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-4" style="width: 80px; height: 80px; font-size: 2rem; font-weight: bold;" id="currentPhoto">
+                                {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Informations utilisateur -->
+                        <div class="flex-grow-1">
+                            <h3 class="text-white">{{ user.first_name }} {{ user.last_name }}</h3>
+                            <p class="text-muted mb-1">
+                                <strong>Matricule :</strong> {{ eleve.matricule }} |
+                                <strong>Genre :</strong> {{ eleve.get_genre_display }}
+                            </p>
+                            <p class="text-muted mb-1">
+                                <strong>Classe :</strong>
+                                {% if eleve.classe_actuelle %}
+                                    {{ eleve.classe_actuelle }}
+                                {% else %}
+                                    <span class="text-danger">Non assigné</span>
+                                {% endif %}
+                            </p>
+                            <p class="text-muted">
+                                <strong>Niveau :</strong>
+                                {% if eleve.classe_actuelle and eleve.classe_actuelle.niveau %}
+                                    {{ eleve.classe_actuelle.niveau }}
+                                    {% if eleve.classe_actuelle.niveau.cycle %}
+                                        ({{ eleve.classe_actuelle.niveau.cycle }})
+                                    {% endif %}
+                                {% else %}
+                                    Non défini
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Bouton pour changer la photo -->
+                    <div class="mt-3 pt-3 border-top border-secondary">
+                        <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('photoUpload').click()">
+                            📷 Changer la photo
+                        </button>
+                        <form id="photoForm" method="post" enctype="multipart/form-data" style="display: none;">
+                            {% csrf_token %}
+                            <input type="file"
+                                   id="photoUpload"
+                                   name="photo"
+                                   accept="image/*"
+                                   onchange="this.form.submit()">
+                        </form>
+                    </div>
                 </div>
-            {% endif %}
-
-            <!-- Informations utilisateur -->
-            <div class="flex-grow-1">
-                <h3 class="text-white">{{ user.first_name }} {{ user.last_name }}</h3>
-                <p class="text-muted mb-1">
-                    <strong>Matricule :</strong> {{ eleve.matricule }} |
-                    <strong>Genre :</strong> {{ eleve.get_genre_display }}
-                </p>
-                <p class="text-muted mb-1">
-                    <strong>Classe :</strong>
-                    {% if eleve.classe_actuelle %}
-                        {{ eleve.classe_actuelle }}
-                    {% else %}
-                        <span class="text-danger">Non assigné</span>
-                    {% endif %}
-                </p>
-                <p class="text-muted">
-                    <strong>Niveau :</strong>
-                    {{ eleve.classe_actuelle.niveau }}
-                    {% if eleve.classe_actuelle.niveau.cycle %}
-                        ({{ eleve.classe_actuelle.niveau.cycle }})
-                    {% endif %}
-                </p>
             </div>
-        </div>
-
-        <!-- Bouton pour changer la photo -->
-        <div class="mt-3 pt-3 border-top border-secondary">
-            <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('photoUpload').click()">
-                📷 Changer la photo
-            </button>
-            <form id="photoForm" method="post" enctype="multipart/form-data" style="display: none;">
-                {% csrf_token %}
-                <input type="file"
-                       id="photoUpload"
-                       name="photo"
-                       accept="image/*"
-                       onchange="this.form.submit()">
-            </form>
-        </div>
-    </div>
-</div>
 
             <!-- Statistiques -->
             <div class="row g-3 mb-4">
@@ -142,7 +147,8 @@
                 <div class="col-md-3">
                     <div class="card text-white bg-warning text-dark shadow-sm">
                         <div class="card-body">
-<h5 class="card-title">{{ absences_count }}</h5>                            <p class="card-text small">Absences</p>
+                            <h5 class="card-title">{{ absences_count }}</h5>
+                            <p class="card-text small">Absences</p>
                             <i class="fas fa-times-circle fa-2x opacity-50 ms-auto"></i>
                         </div>
                     </div>
@@ -158,45 +164,105 @@
                 </div>
             </div>
 
-            <!-- Notes -->
-            <div class="card mb-4 bg-dark shadow">
-                <div class="card-header bg-gradient-primary d-flex align-items-center">
-                    <i class="fas fa-clipboard me-2"></i>
-                    <h5 class="mb-0">Mes notes (Trimestre 1)</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-dark table-hover mb-0">
-                            <thead class="table-secondary">
-                                <tr>
-                                    <th><i class="fas fa-book me-1"></i> Matière</th>
-                                    <th><i class="fas fa-sort-numeric-down me-1"></i> Note</th>
-                                    <th><i class="fas fa-comment me-1"></i> Commentaire</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for note in notes %}
-                                <tr class="align-middle">
-                                    <td class="fw-bold">{{ note.matiere.nom }}</td>
-                                    <td>
-                                        <span class="badge {% if note.note >= 15 %}bg-success{% elif note.note >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                                            {{ note.note }}/20
-                                        </span>
-                                    </td>
-                                    <td>{{ note.commentaire|default:"-" }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="3" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox me-2"></i> Aucune note disponible
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+            <!-- Notes par trimestre -->
+            {% for trimestre_data in trimestres %}
+                <div class="card mb-4 bg-dark shadow">
+                    <div class="card-header bg-gradient-primary d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-clipboard me-2"></i>
+                            <h5 class="mb-0">Mes notes - {{ trimestre_data.nom }}</h5>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">Moyenne :</span>
+                            <span class="badge bg-info text-dark fs-5">
+                                {{ trimestre_data.moyenne|floatformat:2 }}/20
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover mb-0">
+                                <thead class="table-secondary">
+                                    <tr>
+                                        <th><i class="fas fa-book me-1"></i> Matière</th>
+                                        <th><i class="fas fa-sort-numeric-down me-1"></i> Devoir 1</th>
+                                        <th><i class="fas fa-sort-numeric-down me-1"></i> Devoir 2</th>
+                                        <th><i class="fas fa-sort-numeric-down me-1"></i> Devoir 3</th>
+                                        <th><i class="fas fa-sort-numeric-down me-1"></i> Composition</th>
+                                        <th><i class="fas fa-sort-numeric-down me-1"></i> Départ.</th>
+                                        <th><i class="fas fa-calculator me-1"></i> Moyenne</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for matiere_data in trimestre_data.matieres %}
+                                    <tr class="align-middle">
+                                        <td class="fw-bold">{{ matiere_data.matiere.nom }}</td>
+                                        <td>
+                                            {% if matiere_data.devoir1 %}
+                                                <span class="badge {% if matiere_data.devoir1.valeur >= 15 %}bg-success{% elif matiere_data.devoir1.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.devoir1.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.devoir2 %}
+                                                <span class="badge {% if matiere_data.devoir2.valeur >= 15 %}bg-success{% elif matiere_data.devoir2.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.devoir2.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.devoir3 %}
+                                                <span class="badge {% if matiere_data.devoir3.valeur >= 15 %}bg-success{% elif matiere_data.devoir3.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.devoir3.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.composition %}
+                                                <span class="badge {% if matiere_data.composition.valeur >= 15 %}bg-success{% elif matiere_data.composition.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.composition.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.departemental %}
+                                                <span class="badge {% if matiere_data.departemental.valeur >= 15 %}bg-success{% elif matiere_data.departemental.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.departemental.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary fs-5">
+                                                {{ matiere_data.moyenne|floatformat:2 }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    <tr class="table-secondary fw-bold">
+                                        <td colspan="6" class="text-end">MOYENNE GÉNÉRALE</td>
+                                        <td>
+                                            <span class="badge bg-info text-dark fs-5">
+                                                {{ trimestre_data.moyenne|floatformat:2 }}/20
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
+            {% endfor %}
 
             <!-- Présences récentes -->
             <div class="card mb-4 bg-dark shadow">
@@ -277,10 +343,13 @@
             }
         });
     });
-</script>
-
-<!-- Script pour prévisualiser l'image après sélection -->
-<script>
+    
+    // Gestion de l'impression
+    document.getElementById('printButton').addEventListener('click', function() {
+        window.print();
+    });
+    
+    // Script pour prévisualiser l'image après sélection
     document.getElementById('photoUpload').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -298,5 +367,4 @@
         }
     });
 </script>
-
 {% endblock %}

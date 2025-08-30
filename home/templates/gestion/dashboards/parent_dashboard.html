@@ -12,27 +12,27 @@
 {% block content %}
 <div class="container-fluid p-0">
     <!-- Sidebar fixe -->
-    <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarMenu">
+    <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
         <div class="position-sticky vh-100 py-3">
             <h5 class="px-3 mb-3 text-white">Parent</h5>
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a class="nav-link active" href="#">
+                    <a class="nav-link active text-white" href="#">
                         <i class="fas fa-home me-2"></i> Tableau de bord
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#">
+                    <a class="nav-link text-white" href="#">
                         <i class="fas fa-user-graduate me-2"></i> Mes enfants
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#">
+                    <a class="nav-link text-white" href="#">
                         <i class="fas fa-clipboard me-2"></i> Notes
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#">
+                    <a class="nav-link text-white" href="#">
                         <i class="fas fa-calendar-alt me-2"></i> Emploi du temps
                     </a>
                 </li>
@@ -48,15 +48,19 @@
     <!-- Main Content -->
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2 text-white">Bonjour, {{ user.first_name }} {{ user.last_name }}</h1>
+            <h1 class="h2 text-white">
+                Bonjour, <strong>{{ user.role|title }}</strong> - {{ user.first_name }} {{ user.last_name }}
+            </h1>
         </div>
 
         {% if enfants_avec_notes %}
             {% for data in enfants_avec_notes %}
-                <div class="card mb-4 bg-dark shadow">
-                    <div class="card-header bg-gradient-primary">
-                        <h5>{{ data.eleve.utilisateur.get_full_name }} - {{ data.eleve.classe_actuelle }}</h5>
-                        <p class="mb-0">Moyenne T1 : <strong>{{ data.moyenne_t1 }}/20</strong></p>
+                <div class="card mb-4 bg-dark shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">{{ data.enfant.utilisateur.get_full_name }} - {{ data.enfant.classe_actuelle|default:"Non assigné" }}</h5>
+                        <p class="mb-0 small">
+                            Moyenne T1 : <strong>{{ data.moyenne_t1|floatformat:2 }}/20</strong>
+                        </p>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -67,29 +71,75 @@
                                         <th>Devoir 1</th>
                                         <th>Devoir 2</th>
                                         <th>Devoir 3</th>
-                                        <th>Examen</th>
+                                        <th>Composition</th>
                                         <th>Départ.</th>
                                         <th>Moyenne</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for note in data.notes_t1 %}
-                                    <tr>
-                                        <td>{{ note.matiere.nom }}</td>
-                                        <td>{{ note.devoir_1|default:"-" }}</td>
-                                        <td>{{ note.devoir_2|default:"-" }}</td>
-                                        <td>{{ note.devoir_3|default:"-" }}</td>
-                                        <td>{{ note.examen_trimestriel|default:"-" }}</td>
-                                        <td>{{ note.devoir_departemental|default:"-" }}</td>
-                                        <td><strong>{{ note.moyenne_trimestrielle }}</strong></td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
-                                            Aucune note disponible pour ce trimestre.
+                                    {% for matiere_data in data.trimestre1_data.matieres %}
+                                    <tr class="align-middle">
+                                        <td class="fw-bold">{{ matiere_data.matiere.nom }}</td>
+                                        <td>
+                                            {% if matiere_data.devoir1 %}
+                                                <span class="badge {% if matiere_data.devoir1.valeur >= 15 %}bg-success{% elif matiere_data.devoir1.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.devoir1.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.devoir2 %}
+                                                <span class="badge {% if matiere_data.devoir2.valeur >= 15 %}bg-success{% elif matiere_data.devoir2.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.devoir2.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.devoir3 %}
+                                                <span class="badge {% if matiere_data.devoir3.valeur >= 15 %}bg-success{% elif matiere_data.devoir3.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.devoir3.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.composition %}
+                                                <span class="badge {% if matiere_data.composition.valeur >= 15 %}bg-success{% elif matiere_data.composition.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.composition.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if matiere_data.departemental %}
+                                                <span class="badge {% if matiere_data.departemental.valeur >= 15 %}bg-success{% elif matiere_data.departemental.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                    {{ matiere_data.departemental.valeur|floatformat:1 }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary fs-5">
+                                                {{ matiere_data.moyenne|floatformat:2 }}
+                                            </span>
                                         </td>
                                     </tr>
                                     {% endfor %}
+                                    <tr class="table-secondary fw-bold">
+                                        <td colspan="6" class="text-end">MOYENNE GÉNÉRALE</td>
+                                        <td>
+                                            <span class="badge bg-info text-dark fs-5">
+                                                {{ data.moyenne_t1|floatformat:2 }}/20
+                                            </span>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -99,7 +149,7 @@
         {% else %}
             <div class="alert alert-info">
                 <i class="fas fa-user-graduate me-2"></i>
-                Aucun enfant n'est associé à votre compte. Contactez l'administration.
+                Aucun enfant n'est associé à votre compte. Veuillez contacter l'administration.
             </div>
         {% endif %}
     </main>

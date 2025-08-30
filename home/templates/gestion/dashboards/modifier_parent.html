@@ -1,0 +1,164 @@
+<!-- templates/gestion/dashboards/modifier_parent.html -->
+{% extends "gestion/base.html" %}
+{% load form_extras %}
+{% block title %}Modifier un Parent - Capitole School{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark">Modifier le Parent : <strong>{{ parent.utilisateur.get_full_name }}</strong></h1>
+        <a href="{% url 'home:liste_parents' %}" class="btn btn-secondary">← Retour</a>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Erreurs de formulaire -->
+    {% if form.errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5><i class="fas fa-exclamation-triangle me-2"></i> Corrections nécessaires</h5>
+            <ul class="mb-0">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li>
+                            <strong>
+                                {% if field != '__all__' %}
+                                    {{ form|get_field_label:field }}
+                                {% else %}
+                                    Informations générales
+                                {% endif %}
+                                :
+                            </strong>
+                            {{ error }}
+                        </li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+
+    <!-- Formulaire -->
+    <div class="card shadow-sm">
+        <div class="card-body bg-info">
+            <form method="post">
+                {% csrf_token %}
+
+                <h5 class="border-bottom pb-2 mb-4">Informations du Compte</h5>
+                <div class="row g-4">
+                    <!-- Prénom -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                {{ form.first_name.label }}
+                            </label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Nom -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                                {{ form.last_name.label }}
+                            </label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Nom d'utilisateur -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">
+                                {{ form.username.label }}
+                            </label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">{{ form.username.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Le nom d'utilisateur ne peut pas être modifié.</div>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                {{ form.email.label }}
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Téléphone -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.telephone.id_for_label }}" class="form-label">
+                                {{ form.telephone.label }}
+                            </label>
+                            {{ form.telephone }}
+                            {% if form.telephone.errors %}
+                                <div class="text-danger small mt-1">{{ form.telephone.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Adresse -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.adresse.id_for_label }}" class="form-label">
+                                {{ form.adresse.label }}
+                            </label>
+                            {{ form.adresse }}
+                            {% if form.adresse.errors %}
+                                <div class="text-danger small mt-1">{{ form.adresse.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Association des enfants -->
+                <h5 class="border-bottom pb-2 mb-4">Association des Enfants</h5>
+                <div class="mb-3">
+                    <label for="{{ form.enfants.id_for_label }}" class="form-label">
+                        {{ form.enfants.label }}
+                    </label>
+                    {{ form.enfants }}
+                    <div class="text-muted small mt-1">
+                        Maintenez Ctrl (ou Cmd sur Mac) pour sélectionner plusieurs élèves.
+                    </div>
+                    {% if form.enfants.errors %}
+                        <div class="text-danger small mt-1">{{ form.enfants.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Boutons -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Mettre à jour
+                    </button>
+                    <a href="{% url 'home:liste_parents' %}" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

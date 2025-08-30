@@ -39,10 +39,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'home',
+    'django.contrib.humanize',
 ]
 
 AUTH_USER_MODEL = 'gestion.Utilisateur' 
-
+# Configuration des notifications
+SEND_EMAIL_NOTIFICATIONS = False  # Mettez à False pour désactiver les emails
+NOTIFICATION_POLLING_INTERVAL = 30  # Secondes entre chaque vérification des nouvelles notifications
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -52,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'home.middleware.NotificationMiddleware',
 ]
 
 ROOT_URLCONF = 'CapitoleSchool.urls'

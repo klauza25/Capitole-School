@@ -22,6 +22,12 @@ urlpatterns = [
     path('dashboard/secretaire/', views.secretaire_dashboard, name='secretaire_dashboard'),
     path('dashboard/surveillant/', views.surveillant_dashboard, name='surveillant_dashboard'),
     path('parent/', views.parent_dashboard, name='parent_dashboard'),
+    path('parent/', views.ajouter_parent, name='ajouter_parent'),
+    path('parents/<int:pk>/modifier/', views.modifier_parent, name='modifier_parent'),
+    path('parents/<int:pk>/supprimer_parent/', views.supprimer_parent, name='supprimer_parent'),
+    
+    
+   
     # === CYCLES ===
     path('cycles/', views.liste_cycles, name='liste_cycles'),
     path('cycles/ajouter/', views.ajouter_cycle, name='ajouter_cycle'),
@@ -54,4 +60,12 @@ urlpatterns = [
     path('enseignants/ajouter/', views.ajouter_enseignant, name='ajouter_enseignant'),
     path('enseignants/<int:pk>/modifier/', views.modifier_enseignant, name='modifier_enseignant'),
     path('enseignants/<int:pk>/supprimer/', views.supprimer_enseignant, name='supprimer_enseignant'),
+    
+    # notifications
+    path('notifications/', views.notifications_liste, name='notifications'),
+    path('notifications/<int:pk>/lu/', views.notification_marquer_comme_lue, name='notification_marquer_comme_lue'),
+    path('notifications/tout-lu/', views.notifications_marquer_tout_comme_lu, name='notifications_marquer_tout_comme_lu'),
+    path('notifications/<int:pk>/supprimer/', views.notifications_supprimer, name='notifications_supprimer'),
+    path('notifications/tout-supprimer/', views.notifications_supprimer_tout, name='notifications_supprimer_tout'),
+    path('api/notifications/', views.notifications_api, name='notifications_api'),
 ]

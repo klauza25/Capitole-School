@@ -2,7 +2,7 @@
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import Utilisateur
+from .models import Parent, Utilisateur
 # home/forms.py
 from django import forms
 from django.utils.translation import gettext_lazy as _
@@ -39,8 +39,8 @@ class ClasseForm(forms.ModelForm):
             'effectif_max': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': '1',
-                'max': '50',
-                'placeholder': 'Max: 40'
+                'max': '150',
+                'placeholder': 'Max: 100'
             })
         }
         labels = {
@@ -450,4 +450,109 @@ class EnseignantForm(forms.ModelForm):
             user.set_password('Capitole123')
         if commit:
             user.save()
+        return user
+    
+    
+
+
+
+User = get_user_model()
+
+class ParentForm(forms.ModelForm):
+    first_name = forms.CharField(
+        label=_("Prénom"),
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    last_name = forms.CharField(
+        label=_("Nom"),
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    username = forms.CharField(
+        label=_("Nom d'utilisateur"),
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: m_kouma'})
+    )
+    email = forms.EmailField(
+        label=_("Email"),
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'm.kouma@email.com'})
+    )
+    telephone = forms.CharField(
+        label=_("Téléphone"),
+        max_length=15,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+237 6XX XXX XXX'}),
+        required=False
+    )
+    password1 = forms.CharField(
+        label=_("Mot de passe"),
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        required=False
+    )
+    password2 = forms.CharField(
+        label=_("Confirmer le mot de passe"),
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        required=False
+    )
+    enfants = forms.ModelMultipleChoiceField(
+        queryset=Eleve.objects.all(),
+        widget=forms.SelectMultiple(attrs={'class': 'form-control', 'size': '8'}),
+        required=False,
+        label=_("Associer des enfants")
+    )
+
+    class Meta:
+        model = Utilisateur
+        fields = ['first_name', 'last_name', 'username', 'email', 'telephone']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            try:
+                parent = self.instance.parent_profile
+                self.fields['enfants'].initial = parent.enfants.all()
+            except Parent.DoesNotExist:
+                pass
+        self.fields['enfants'].queryset = Eleve.objects.select_related('utilisateur').all().order_by('utilisateur__last_name')
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if username and User.objects.filter(username=username).exclude(pk=self.instance.pk).exists():
+            raise ValidationError(_("Ce nom d'utilisateur est déjà utilisé."))
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
+            raise ValidationError(_("Cet email est déjà utilisé."))
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        if password1 or password2:
+            if password1 != password2:
+                raise ValidationError(_("Les mots de passe ne correspondent pas."))
+        return cleaned_data
+
+    def save(self, commit=True):
+        if self.instance.pk:
+            user = self.instance
+        else:
+            user = User(role='parent')
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        user.username = self.cleaned_data['username']
+        user.email = self.cleaned_data['email']
+        user.telephone = self.cleaned_data['telephone']
+        password = self.cleaned_data.get('password1')
+        if password:
+            user.set_password(password)
+        elif not self.instance.pk:
+            user.set_password('Capitole123')
+        if commit:
+            user.save()
+            parent, created = Parent.objects.get_or_create(utilisateur=user)
+            parent.enfants.set(self.cleaned_data['enfants'])
         return user

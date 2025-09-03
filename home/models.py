@@ -1,13 +1,11 @@
 # models.py
-from datetime import timezone
+from datetime import date, timezone
 from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
-# home/models.py
-from django.db import models
-from django.utils.translation import gettext_lazy as _
+
 
 class Notification(models.Model):
     """Modèle pour les notifications des utilisateurs"""
@@ -81,6 +79,8 @@ class Notification(models.Model):
             'AUTRE': 'fas fa-bell'
         }
         return icone_map.get(self.type_notification, 'fas fa-bell')
+
+
 # ---------------------
 # Utilisateurs (compte unique)
 # ---------------------
@@ -159,7 +159,6 @@ class Classe(models.Model):
 # ---------------------
 # Élèves
 # ---------------------
-
 class Eleve(models.Model):
     GENRE_CHOICES = [
         ('M', _('Masculin')),
@@ -201,9 +200,6 @@ class Eleve(models.Model):
         ('TRANSFERE', 'Transféré'),
     ]
     
-    # ... vos autres champs existants ...
-    
-    # Ajoutez ce champ
     statut = models.CharField(
         _("Statut"),
         max_length=20,
@@ -211,14 +207,14 @@ class Eleve(models.Model):
         default='INSCRIT',
         db_index=True
     )
+    
     class Meta:
         verbose_name = _("Élève")
         verbose_name_plural = _("Élèves")
 
     def __str__(self):
         return f"{self.utilisateur.get_full_name()} ({self.matricule})"
-    
-    # models.py
+
     def notes_trimestre(self, trimestre):
         """Retourne toutes les notes d'un trimestre spécifique"""
         return self.notes.filter(trimestre=trimestre)
@@ -235,7 +231,6 @@ class Eleve(models.Model):
 
     def moyenne_trimestrielle(self, trimestre):
         """Calcule la moyenne générale du trimestre"""
-        """Calcule la moyenne générale du trimestre"""
         matieres = Matiere.objects.filter(niveau=self.classe_actuelle.niveau)
         if not matieres:
             return 0.0
@@ -249,6 +244,7 @@ class Eleve(models.Model):
             poids_total += matiere.coefficient
     
         return round(total / poids_total, 2) if poids_total else 0.0
+
 
 # ---------------------
 # Parents
@@ -315,8 +311,6 @@ class Enseignement(models.Model):
 # ---------------------
 # Notes & Évaluations
 # ---------------------
-# Modèle Note adapté au système congolais
-# home/models.py
 class Note(models.Model):
     TYPE_EVALUATION = [
         ('DS1', 'Devoir 1'),
@@ -337,133 +331,19 @@ class Note(models.Model):
     trimestre = models.CharField(max_length=2, choices=TRIMESTRE_CHOICES)
     type_evaluation = models.CharField(max_length=4, choices=TYPE_EVALUATION)
     valeur = models.DecimalField(max_digits=4, decimal_places=2)
-    date_evaluation = models.DateField(auto_now_add=True)  # Notez le nom exact
+    date_evaluation = models.DateField(auto_now_add=True)
 
-    # Le coefficient est déterminé automatiquement
     coefficient = models.DecimalField(
         _("Coefficient"),
         max_digits=3,
         decimal_places=1,
         default=Decimal('1.0')
     )
+
+
 # ---------------------
 # Paiements & Finances
 # ---------------------
-# home/models.py
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-# home/models.py
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-from decimal import Decimal
-from datetime import date
-
-class Frais(models.Model):
-    """Modèle pour les frais scolaires"""
-    CATEGORIES = [
-        ('INSCRIPTION', _('Frais d\'inscription')),
-        ('SCOLARITE', _('Frais de scolarité')),
-        ('EXAMEN', _('Frais d\'examen')),
-        ('LIVRE', _('Frais de livres')),
-        ('AUTRE', _('Autre')),
-    ]
-
-    niveau = models.ForeignKey(
-        'Niveau',
-        on_delete=models.CASCADE,
-        related_name='frais_niveau',
-        verbose_name=_("Niveau")
-    )
-    categorie = models.CharField(
-        _("Catégorie"),
-        max_length=20,
-        choices=CATEGORIES,
-        db_index=True
-    )
-    description = models.CharField(_("Description"), max_length=100)
-    montant = models.DecimalField(
-        _("Montant"),
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal('0.00')  # CORRECTION : Utiliser Decimal au lieu de float
-    )
-    date_limite = models.DateField(_("Date limite"), db_index=True)
-    
-    class Meta:
-        verbose_name = _("Frais")
-        verbose_name_plural = _("Frais")
-        ordering = ['date_limite']
-        indexes = [
-            models.Index(fields=['niveau', 'date_limite']),
-        ]
-
-    def __str__(self):
-        return f"{self.description} - {self.niveau} - {self.montant} XAF"
-    
-    def get_montant_restant(self, eleve):
-        """Retourne le montant restant à payer pour cet élève"""
-        total_paye = self.paiements.filter(
-            eleve=eleve,
-            status='Payé'
-        ).aggregate(total=models.Sum('montant_paye'))['total'] or Decimal('0.00')
-        
-        return max(Decimal('0.00'), self.montant - total_paye)
-    
-    def get_statut(self, eleve):
-        """Retourne le statut de paiement pour cet élève (calculé dynamiquement)"""
-        montant_restant = self.get_montant_restant(eleve)
-        
-        if montant_restant <= 0:
-            return 'PAYE'
-        elif montant_restant < self.montant:
-            return 'PARTIEL'
-        else:
-            return 'EN_ATTENTE'
-    
-    def get_statut_couleur(self, eleve):
-        """Retourne la classe CSS correspondant au statut"""
-        statut = self.get_statut(eleve)
-        couleurs = {
-            'EN_ATTENTE': 'danger',
-            'PARTIEL': 'warning',
-            'PAYE': 'success',
-            'EXEMPT': 'info'
-        }
-        return couleurs.get(statut, 'secondary')
-    
-    def get_montant_display(self):
-        """Retourne le montant formaté avec XAF"""
-        return f"{self.montant:,.0f} XAF"
-    
-    
-    
-# home/models.py
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-from decimal import Decimal
-from datetime import date
-
-# Types de paiement adaptés au contexte congolais
-TYPE_PAIEMENT_CHOICES = [
-    ('Espèces', _('Espèces')),
-    ('Mobile Money', _('Mobile Money')),
-    ('Airtel Money', _('Airtel Money')),
-    ('Orange Money', _('Orange Money')),
-    ('Moov Money', _('Moov Money')),
-    ('Virement', _('Virement bancaire')),
-    ('Chèque', _('Chèque')),
-    ('Autre', _('Autre')),
-]
-
-# Statuts de paiement pour le contexte scolaire
-STATUS_PAIEMENT_CHOICES = [
-    ('Non payé', _('Non payé')),
-    ('Partiellement payé', _('Partiellement payé')),
-    ('Payé', _('Payé')),
-    ('Exempté', _('Exempté')),
-    ('En attente de validation', _('En attente de validation')),
-]
-
 class Frais(models.Model):
     """Modèle pour les frais scolaires"""
     CATEGORIES = [
@@ -511,8 +391,8 @@ class Frais(models.Model):
         """Retourne le montant restant à payer pour cet élève"""
         total_paye = self.paiements.filter(
             eleve=eleve,
-            statut='Payé'
-        ).aggregate(total=models.Sum('montant'))['total'] or Decimal('0.00')
+            status='Payé'
+        ).aggregate(total=models.Sum('montant_paye'))['total'] or Decimal('0.00')
         
         return max(Decimal('0.00'), self.montant - total_paye)
     
@@ -544,6 +424,20 @@ class Paiement(models.Model):
     Enregistre chaque paiement effectué par un élève.
     Lié à un ou plusieurs frais scolaires.
     """
+    STATUS_CHOICES = [
+        ('Payé', _('Payé')),
+        ('Partiellement payé', _('Partiellement payé')),
+        ('Non payé', _('Non payé')),
+    ]
+    
+    status = models.CharField(
+        _("Statut du paiement"),
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default='Non payé',
+        db_index=True
+    )
+    
     eleve = models.ForeignKey(
         'Eleve',
         on_delete=models.CASCADE,
@@ -579,7 +473,16 @@ class Paiement(models.Model):
     type_paiement = models.CharField(
         _("Mode de paiement"),
         max_length=30,
-        choices=TYPE_PAIEMENT_CHOICES,
+        choices=[
+            ('Espèces', _('Espèces')),
+            ('Mobile Money', _('Mobile Money')),
+            ('Airtel Money', _('Airtel Money')),
+            ('Orange Money', _('Orange Money')),
+            ('Moov Money', _('Moov Money')),
+            ('Virement', _('Virement bancaire')),
+            ('Chèque', _('Chèque')),
+            ('Autre', _('Autre')),
+        ],
         default='Espèces'
     )
     numero_transaction = models.CharField(
@@ -588,20 +491,14 @@ class Paiement(models.Model):
         blank=True,
         null=True
     )
-    status = models.CharField(
-        _("Statut du paiement"),
-        max_length=30,
-        choices=STATUS_PAIEMENT_CHOICES,
-        default='Non payé',
-        db_index=True
-    )
     personnel = models.ForeignKey(
         'Utilisateur',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         verbose_name=_("Personnel qui a enregistré le paiement"),
-        limit_choices_to={'role__in': ['secretaire', 'admin', 'directeur']}
+        limit_choices_to={'role__in': ['secretaire', 'admin', 'directeur']},
+        db_index=True
     )
     notes = models.TextField(
         _("Notes supplémentaires"),
@@ -620,41 +517,51 @@ class Paiement(models.Model):
     def get_montant_du(self):
         """Retourne le montant total dû selon les frais"""
         return self.frais.montant
-
+  
+    
     def update_status(self):
-        montant_paye = self.montant_paye
-        montant_total = self.montant_total
-        
-        if montant_paye >= montant_total:
+        """
+        Met à jour le statut du paiement en fonction du montant payé
+        """
+        if self.montant_paye >= self.montant_total:
             self.status = 'Payé'
-        elif montant_paye > Decimal('0.00'):
+        elif self.montant_paye > Decimal('0.00'):
             self.status = 'Partiellement payé'
         else:
             self.status = 'Non payé'
         
-        # Mettre à jour le statut des frais associés
-        self.frais.paiements.filter(eleve=self.eleve).update(statut=self.status)
-        
-        self.save(update_fields=['status'])
+        # Sauvegarder le statut mis à jour
+        # Ne pas utiliser force_update, laisser Django gérer
+        if self.pk:  # Vérifier que l'objet a une clé primaire
+            self.save(update_fields=['status'])
+        # Si pas de pk, le statut sera sauvegardé dans save()
 
-    def calculer_difference(self):
-        if self.montant_paye > self.montant_total:
-            self.difference_rendue = self.montant_paye - self.montant_total
-        else:
-            self.difference_rendue = Decimal('0.00')
-        self.save(update_fields=['difference_rendue'])
-
+    @property
+    def date(self):
+        """
+        Alias pour date_paiement pour compatibilité avec le code existant
+        """
+        return self.date_paiement
+    
+    
     def save(self, *args, **kwargs):
+        """
+        Surcharge de la méthode save pour assurer la cohérence des données
+        """
         # Initialiser le montant total si non spécifié
         if self.montant_total == Decimal('0.00'):
             self.montant_total = self.frais.montant
         
         # Calculer la différence rendue
-        self.calculer_difference()
+        if self.montant_paye > self.montant_total:
+            self.difference_rendue = self.montant_paye - self.montant_total
+        else:
+            self.difference_rendue = Decimal('0.00')
         
         # Mettre à jour le statut
         self.update_status()
         
+        # Sauvegarder l'objet
         super().save(*args, **kwargs)
     
     class Meta:
@@ -664,9 +571,12 @@ class Paiement(models.Model):
         indexes = [
             models.Index(fields=['eleve', 'date_paiement']),
             models.Index(fields=['status']),
+            models.Index(fields=['frais', 'eleve']),
         ]
-        
-        
+
+    
+
+
 class Transaction(models.Model):
     """Modèle pour les transactions (pour l'audit)"""
     TYPE_TRANSACTION = [
@@ -703,8 +613,8 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.utilisateur} - {self.type_transaction} - {self.objet}"
-    
-    
+
+
 # ---------------------
 # Présences
 # ---------------------
@@ -713,13 +623,11 @@ class Presence(models.Model):
     eleve = models.ForeignKey(
         'Eleve',
         on_delete=models.CASCADE,
-        related_name='presences'  # Ce related_name détermine comment accéder aux présences depuis Eleve
+        related_name='presences'
     )
     date = models.DateField(_("Date"), db_index=True)
     present = models.BooleanField(_("Présent"), default=True)
     justification = models.TextField(_("Justification"), blank=True, null=True)
-    
-    # Si vous voulez suivre les retards, ajoutez ce champ
     retard = models.BooleanField(_("Retard"), default=False)
     
     class Meta:
@@ -734,6 +642,8 @@ class Presence(models.Model):
 
     def __str__(self):
         return f"{self.eleve} - {self.date} - {'Présent' if self.present else 'Absent'}"
+
+
 # ---------------------
 # Messagerie interne
 # ---------------------
@@ -743,14 +653,14 @@ class Message(models.Model):
         on_delete=models.CASCADE,
         related_name='messages_envoyes',
         verbose_name=_("Expéditeur"),
-        db_index=True  # Important pour les performances
+        db_index=True
     )
     destinataire = models.ForeignKey(
         Utilisateur,
         on_delete=models.CASCADE,
         related_name='messages_recus',
         verbose_name=_("Destinataire"),
-        db_index=True  # Important pour les performances
+        db_index=True
     )
     objet = models.CharField(_("Objet"), max_length=100, db_index=True)
     contenu = models.TextField(_("Contenu"))
@@ -808,6 +718,7 @@ class Message(models.Model):
         if self.supprime_expediteur:
             self.delete()
 
+
 # ---------------------
 # Certificats & Bulletins
 # ---------------------
@@ -830,33 +741,3 @@ class Document(models.Model):
 
     def __str__(self):
         return f"{self.nom} - {self.eleve}"
-    
-    
-    
-    
-class Presence(models.Model):
-    """Modèle pour la gestion des présences des élèves"""
-    eleve = models.ForeignKey(
-        'Eleve',
-        on_delete=models.CASCADE,
-        related_name='presence'
-    )
-    date = models.DateField(_("Date"), db_index=True)
-    present = models.BooleanField(_("Présent"), default=True)
-    justification = models.TextField(_("Justification"), blank=True, null=True)
-    
-    # AJOUTEZ CETTE LIGNE POUR AJOUTER LE CHAMP RETARD
-    retard = models.BooleanField(_("Retard"), default=False)
-    
-    class Meta:
-        verbose_name = _("Présence")
-        verbose_name_plural = _("Présences")
-        unique_together = ('eleve', 'date')
-        indexes = [
-            models.Index(fields=['date']),
-            models.Index(fields=['present']),
-        ]
-        ordering = ['-date']
-
-    def __str__(self):
-        return f"{self.eleve} - {self.date} - {'Présent' if self.present else 'Absent'}"

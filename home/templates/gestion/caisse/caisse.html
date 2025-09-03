@@ -90,7 +90,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <strong>STATUT:</strong>
-                                    <strong id="receipt-statut" class="text-primary">NON PAYÉ</strong>
+                                    <strong id="receipt-status" class="text-primary">NON PAYÉ</strong>
                                 </div>
                                 
                                 <hr class="my-2">
@@ -236,16 +236,16 @@
             
             // Mettre à jour le statut
             if (montantPaye >= montantTotal) {
-                document.getElementById('receipt-statut').textContent = 'PAYÉ';
-                document.getElementById('receipt-statut').classList.remove('text-warning');
-                document.getElementById('receipt-statut').classList.add('text-success');
+                document.getElementById('receipt-status').textContent = 'PAYÉ';
+                document.getElementById('receipt-status').classList.remove('text-warning');
+                document.getElementById('receipt-status').classList.add('text-success');
             } else if (montantPaye > 0) {
-                document.getElementById('receipt-statut').textContent = 'PARTIEL';
-                document.getElementById('receipt-statut').classList.remove('text-success');
-                document.getElementById('receipt-statut').classList.add('text-warning');
+                document.getElementById('receipt-status').textContent = 'PARTIEL';
+                document.getElementById('receipt-status').classList.remove('text-success');
+                document.getElementById('receipt-status').classList.add('text-warning');
             } else {
-                document.getElementById('receipt-statut').textContent = 'NON PAYÉ';
-                document.getElementById('receipt-statut').classList.remove('text-success', 'text-warning');
+                document.getElementById('receipt-status').textContent = 'NON PAYÉ';
+                document.getElementById('receipt-status').classList.remove('text-success', 'text-warning');
             }
         });
         
@@ -302,8 +302,8 @@
         document.getElementById('receipt-ref-transaction').textContent = '-';
         document.getElementById('receipt-difference').textContent = '0 XAF';
         document.getElementById('receipt-difference').classList.remove('text-success', 'text-danger');
-        document.getElementById('receipt-statut').textContent = 'NON PAYÉ';
-        document.getElementById('receipt-statut').classList.remove('text-success', 'text-warning');
+        document.getElementById('receipt-status').textContent = 'NON PAYÉ';
+        document.getElementById('receipt-status').classList.remove('text-success', 'text-warning');
         
         // Remettre le focus sur le champ montant
         setTimeout(() => {

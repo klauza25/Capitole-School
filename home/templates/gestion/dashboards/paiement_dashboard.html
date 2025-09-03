@@ -1,15 +1,13 @@
 <!-- templates/gestion/dashboards/paiement_dashboard.html -->
 {% extends "gestion/base.html" %}
-{% load static humanize %}
+{% load static %}
 {% block title %}Paiements - Capitole School{% endblock %}
-
-
 
 {% block nav_links %}
 <li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
 <li class="nav-item"><a class="nav-link active" href="#">Paiements</a></li>
-<li class="nav-item"><a class="nav-link" href="#">Factures</a></li>
-<li class="nav-item"><a class="nav-link" href="#">Historique</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:liste_paiements' %}">Historique</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:caisse' %}">Caisse</a></li>
 <li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
 {% endblock %}
 
@@ -27,18 +25,18 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-white" href="#">
-                            <i class="fas fa-file-invoice me-2"></i> Factures
+                        <a class="nav-link text-white" href="{% url 'home:caisse' %}">
+                            <i class="fas fa-cash-register me-2"></i> Caisse
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-white" href="#">
+                        <a class="nav-link text-white" href="{% url 'home:liste_paiements' %}">
                             <i class="fas fa-history me-2"></i> Historique
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-white" href="#">
-                            <i class="fas fa-cog me-2"></i> Paramètres
+                        <a class="nav-link text-white" href="{% url 'home:ajouter_frais' %}">
+                            <i class="fas fa-file-invoice me-2"></i> Gérer les frais
                         </a>
                     </li>
                 </ul>
@@ -62,23 +60,15 @@
                         </ul>
                     </div>
                     {% if user.role in 'secretaire,admin,directeur' %}
-                    <button type="button" class="btn btn-sm " id="ajouterPaiementBtn">
-                      <!-- Dans templates/gestion/dashboards/paiement_dashboard.html -->
-                        <a href="{% url 'home:caisse' %}" class="btn btn-sm btn-outline-success">
-                            <i class="fas fa-plus me-1"></i> Nouveau paiement
-                        </a>
-                    </button>
-                    <br>
-                    
-            <a href="{% url 'home:ajouter_frais' %}" class="btn btn-sm btn-outline-primary rounded--lg">
-                <i class="fas fa-plus me-1"></i> Ajouter des frais
-            </a>
-          
+                    <a href="{% url 'home:caisse' %}" class="btn btn-sm btn-outline-success me-2">
+                        <i class="fas fa-plus me-1"></i> Nouveau paiement
+                    </a>
+                    <a href="{% url 'home:ajouter_frais' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus me-1"></i> Ajouter des frais
+                    </a>
                     {% endif %}
                 </div>
             </div>
-
-            
 
             <!-- Statistiques globales -->
             <div class="row g-3 mb-4">
@@ -103,7 +93,7 @@
                 <div class="col-md-3">
                     <div class="card text-white bg-warning text-dark shadow-sm">
                         <div class="card-body">
-                            <h5 class="card-title">{{ total_a_payer }} XAF</h5>
+                            <h5 class="card-title">{{ total_a_payer|floatformat:0 }} XAF</h5>
                             <p class="card-text small">Reste à payer</p>
                             <i class="fas fa-exclamation-triangle fa-2x opacity-50 ms-auto"></i>
                         </div>
@@ -151,11 +141,9 @@
                                         </div>
                                         <div class="d-flex justify-content-between">
                                             <span class="badge bg-info">{{ enfant.niveau }}</span>
-                                            <button class="btn btn-sm btn-outline-primary" 
-                                                    data-enfant-id="{{ enfant.id }}"
-                                                    onclick="selectEnfant({{ enfant.id }})">
+                                            <a href="{% url 'home:paiement_dashboard' %}?enfant_id={{ enfant.id }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye me-1"></i> Voir
-                                            </button>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -206,41 +194,37 @@
                                         </div>
                                     </td>
                                     <td>{{ paiement.frais.description }}</td>
-                                    <td>{{ paiement.date|date:"d M Y" }}</td>
-                                    <td><strong>{{ paiement.montant|floatformat:0 }} XAF</strong></td>
+                                    <td>{{ paiement.date_paiement|date:"d M Y" }}</td>
+                                    <td><strong>{{ paiement.montant_paye|floatformat:0 }} XAF</strong></td>
                                     <td>
                                         <span class="badge bg-primary">
-                                            {{ paiement.get_moyen_display }}
+                                            {{ paiement.get_type_paiement_display }}
                                         </span>
                                     </td>
-                                    <td>{{ paiement.reference|default:"-" }}</td>
+                                    <td>{{ paiement.numero_transaction|default:"-" }}</td>
                                     <td>
-                                        <span class="badge bg-{{ paiement.get_statut_couleur }}">
-                                            {{ paiement.get_statut_display }}
+                                        <span class="badge bg-{% if paiement.status == 'Payé' %}success{% elif paiement.status == 'Partiellement payé' %}warning{% elif paiement.status == 'Non payé' %}danger{% else %}secondary{% endif %}">
+                                            {{ paiement.status }}
                                         </span>
                                     </td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <button class="btn btn-sm btn-outline-info" 
-                                                    title="Détails"
-                                                    onclick="showPaiementDetails({{ paiement.id }})">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <a href="{% url 'home:generer_recu' paiement.id %}" 
-                                               class="btn btn-sm btn-outline-success" 
-                                               title="Télécharger le reçu"
-                                               target="_blank">
-                                                <i class="fas fa-download"></i>
-                                            </a>
-                                            {% if user.role in 'secretaire,admin,directeur' %}
-                                            <button class="btn btn-sm btn-outline-warning" 
-                                                    title="Modifier"
-                                                    onclick="editPaiement({{ paiement.id }})">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            {% endif %}
-                                        </div>
-                                    </td>
+                                    <!-- templates/gestion/dashboards/paiement_dashboard.html -->
+<!-- ... dans la section des actions ... -->
+<td>
+    <div class="btn-group">
+        <a href="{% url 'home:detail_paiement' paiement.id %}" 
+           class="btn btn-sm btn-outline-info" 
+           title="Détails">
+            <i class="fas fa-eye"></i>
+        </a>
+        <a href="{% url 'home:generer_recu' paiement.id %}" 
+           class="btn btn-sm btn-outline-success" 
+           title="Télécharger le reçu"
+           target="_blank">
+            <i class="fas fa-download"></i>
+        </a>
+        
+    </div>
+</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
@@ -260,7 +244,7 @@
                         <ul class="pagination pagination-dark">
                             {% if paiements.has_previous %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ paiements.previous_page_number }}">&laquo;</a>
+                                <a class="page-link" href="?page={{ paiements.previous_page_number }}{% if request.GET.enfant_id %}&enfant_id={{ request.GET.enfant_id }}{% endif %}">&laquo;</a>
                             </li>
                             {% else %}
                             <li class="page-item disabled">
@@ -275,14 +259,14 @@
                             </li>
                             {% else %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                                <a class="page-link" href="?page={{ i }}{% if request.GET.enfant_id %}&enfant_id={{ request.GET.enfant_id }}{% endif %}">{{ i }}</a>
                             </li>
                             {% endif %}
                             {% endfor %}
                             
                             {% if paiements.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ paiements.next_page_number }}">&raquo;</a>
+                                <a class="page-link" href="?page={{ paiements.next_page_number }}{% if request.GET.enfant_id %}&enfant_id={{ request.GET.enfant_id }}{% endif %}">&raquo;</a>
                             </li>
                             {% else %}
                             <li class="page-item disabled">
@@ -321,69 +305,12 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Espace pour tester le scroll -->
-            <div style="height: 400px;"></div>
         </main>
     </div>
 </div>
 
-<!-- Modal Ajouter Paiement -->
-<div class="modal fade" id="ajouterPaiementModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-dark text-white">
-            <div class="modal-header">
-                <h5 class="modal-title">Ajouter un paiement</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="ajouterPaiementForm">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="eleveSelect" class="form-label">Élève</label>
-                        <select class="form-select bg-dark text-white" id="eleveSelect" name="eleve_id" required>
-                            <option value="">Sélectionnez un élève</option>
-                            <!-- Les élèves seront chargés dynamiquement -->
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="fraisSelect" class="form-label">Frais</label>
-                        <select class="form-select bg-dark text-white" id="fraisSelect" name="frais_id" required>
-                            <option value="">Sélectionnez les frais</option>
-                            <!-- Les frais seront chargés dynamiquement -->
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="montantInput" class="form-label">Montant (XAF)</label>
-                        <input type="number" class="form-control bg-dark text-white" id="montantInput" name="montant" min="1" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="moyenSelect" class="form-label">Moyen de paiement</label>
-                        <select class="form-select bg-dark text-white" id="moyenSelect" name="moyen" required>
-                            <option value="">Sélectionnez un moyen</option>
-                            <option value="ESPECE">Espèce</option>
-                            <option value="MOBILE_MONEY">Mobile Money</option>
-                            <option value="BANQUE">Virement bancaire</option>
-                            <option value="CHEQUE">Chèque</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="referenceInput" class="form-label">Référence</label>
-                        <input type="text" class="form-control bg-dark text-white" id="referenceInput" name="reference">
-                    </div>
-                    <div class="mb-3">
-                        <label for="commentaireInput" class="form-label">Commentaire</label>
-                        <textarea class="form-control bg-dark text-white" id="commentaireInput" name="commentaire" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-success" id="submitPaiementBtn">Enregistrer</button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal Ajouter Paiement (désactivé car nous utilisons la caisse) -->
+<!-- Supprimé car nous utilisons la page de caisse pour ajouter des paiements -->
 
 <!-- Modal Détails Paiement -->
 <div class="modal fade" id="paiementDetailsModal" tabindex="-1" aria-hidden="true">
@@ -394,7 +321,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="paiementDetailsContent">
-                <!-- Le contenu sera chargé dynamiquement -->
+                <!-- Le contenu sera affiché via les liens directs -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
@@ -425,174 +352,16 @@
         });
     });
     
-    // Gestion de l'ajout de paiement
-    document.getElementById('ajouterPaiementBtn').addEventListener('click', function() {
-        const modal = new bootstrap.Modal(document.getElementById('ajouterPaiementModal'));
-        modal.show();
-        
-        // Charger les élèves
-        fetch('')
-            .then(response => response.json())
-            .then(data => {
-                const eleveSelect = document.getElementById('eleveSelect');
-                eleveSelect.innerHTML = '<option value="">Sélectionnez un élève</option>';
-                
-                data.forEach(eleve => {
-                    const option = document.createElement('option');
-                    option.value = eleve.id;
-                    option.textContent = `${eleve.nom} ${eleve.prenom} - ${eleve.classe}`;
-                    eleveSelect.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error('Erreur lors du chargement des élèves:', error);
-                showError('Impossible de charger la liste des élèves');
-            });
-    });
-    
-    // Charger les frais en fonction de l'élève sélectionné
-    document.getElementById('eleveSelect').addEventListener('change', function() {
-        const eleveId = this.value;
-        const fraisSelect = document.getElementById('fraisSelect');
-        
-        if (!eleveId) {
-            fraisSelect.innerHTML = '<option value="">Sélectionnez les frais</option>';
-            return;
-        }
-        
-        fetch(`?eleve_id=${eleveId}`)
-            .then(response => response.json())
-            .then(data => {
-                fraisSelect.innerHTML = '<option value="">Sélectionnez les frais</option>';
-                
-                data.forEach(frais => {
-                    const option = document.createElement('option');
-                    option.value = frais.id;
-                    option.textContent = `${frais.description} - ${frais.montant} XAF (Échéance: ${frais.date_limite})`;
-                    fraisSelect.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error('Erreur lors du chargement des frais:', error);
-                showError('Impossible de charger la liste des frais');
-            });
-    });
-    
-    // Soumettre le formulaire d'ajout de paiement
-    document.getElementById('submitPaiementBtn').addEventListener('click', function() {
-        const form = document.getElementById('ajouterPaiementForm');
-        const formData = new FormData(form);
-        
-        // Validation simple
-        if (!formData.get('eleve_id') || !formData.get('frais_id') || !formData.get('montant') || !formData.get('moyen')) {
-            showError('Veuillez remplir tous les champs requis');
-            return;
-        }
-        
-        // Désactiver le bouton pendant la requête
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...';
-        
-        // Envoyer la requête
-        fetch('', {
-            method: 'POST',
-            body: new URLSearchParams(formData),
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Fermer le modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('ajouterPaiementModal'));
-                modal.hide();
-                
-                // Afficher un message de succès
-                showSuccess(data.message);
-                
-                // Recharger la page pour voir les changements
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                throw new Error(data.error || 'Erreur lors de l\'enregistrement');
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            showError(error.message || 'Erreur lors de l\'enregistrement du paiement');
-            
-            // Réactiver le bouton
-            document.getElementById('submitPaiementBtn').disabled = false;
-            document.getElementById('submitPaiementBtn').textContent = 'Enregistrer';
-        });
-    });
-    
-    // Afficher les détails d'un paiement
-    function showPaiementDetails(paiementId) {
-        fetch(`?id=${paiementId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const content = `
-                        <div class="mb-3">
-                            <h6 class="text-white">Élève</h6>
-                            <p class="text-muted mb-1">${data.eleve_nom}</p>
-                            <p class="text-muted">${data.classe}</p>
-                        </div>
-                        <div class="mb-3">
-                            <h6 class="text-white">Frais</h6>
-                            <p class="text-muted">${data.frais_description} - ${data.frais_montant} XAF</p>
-                            <p class="text-muted">Échéance: ${data.frais_date_limite}</p>
-                        </div>
-                        <div class="mb-3">
-                            <h6 class="text-white">Détails du paiement</h6>
-                            <p class="text-muted mb-1"><strong>Date:</strong> ${data.date}</p>
-                            <p class="text-muted mb-1"><strong>Montant:</strong> ${data.montant} XAF</p>
-                            <p class="text-muted mb-1"><strong>Moyen:</strong> ${data.moyen}</p>
-                            <p class="text-muted mb-1"><strong>Référence:</strong> ${data.reference || '-'}</p>
-                            <p class="text-muted"><strong>Statut:</strong> <span class="badge bg-${data.statut_couleur}">${data.statut}</span></p>
-                        </div>
-                        ${data.commentaire ? `
-                        <div class="mb-3">
-                            <h6 class="text-white">Commentaire</h6>
-                            <p class="text-muted">${data.commentaire}</p>
-                        </div>` : ''}
-                    `;
-                    
-                    document.getElementById('paiementDetailsContent').innerHTML = content;
-                    
-                    const modal = new bootstrap.Modal(document.getElementById('paiementDetailsModal'));
-                    modal.show();
-                } else {
-                    showError(data.error || 'Impossible de charger les détails du paiement');
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                showError('Erreur lors du chargement des détails du paiement');
-            });
-    }
-    
-    // Fonction pour sélectionner un enfant (pour les parents)
-    function selectEnfant(enfantId) {
-        // Ici vous redirigeriez vers la page des paiements de cet enfant
-        // Pour cet exemple, nous allons juste afficher un message
-        showInfo(`Affichage des paiements pour l'enfant ID: ${enfantId}`);
-    }
-    
     // Initialiser les graphiques
     document.addEventListener('DOMContentLoaded', function() {
         // Graphique des paiements
         const paiementsCtx = document.getElementById('paiementsChart').getContext('2d');
         const paiementsChart = new Chart(paiementsCtx, {
             type: 'pie',
-             {
-                labels: ['Payés', 'Partiellement payés', 'En attente'],
+            data: {
+                labels: ['Payés', 'Partiellement payés', 'Non payés'],
                 datasets: [{
-                    data: [{{ taux_paiement }}],
+                    data: [{{ stats.payes }}, {{ stats.partiels }}, {{ stats.non_payes }}],
                     backgroundColor: [
                         'rgba(40, 167, 69, 0.7)',
                         'rgba(255, 193, 7, 0.7)',
@@ -623,7 +392,7 @@
         const evolutionCtx = document.getElementById('evolutionChart').getContext('2d');
         const evolutionChart = new Chart(evolutionCtx, {
             type: 'line',
-             {
+            data: {
                 labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
                 datasets: [{
                     label: 'Paiements',
@@ -667,21 +436,6 @@
     });
     
     // Fonctions utilitaires
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-    
     function showSuccess(message) {
         const alert = document.createElement('div');
         alert.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';

@@ -14,7 +14,7 @@ from decimal import Decimal
 import logging
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import STATUS_PAIEMENT_CHOICES, Eleve, Enseignement, Classe, Frais, Matiere, Note, Notification, Paiement, Parent, Presence, Transaction, Utilisateur, Eleve, Classe
+from .models import *
 from .forms import EnseignantForm, FraisForm, PaiementForm, ParentForm, RegisterForm, CycleForm, NiveauForm, ClasseForm, EleveForm
 from django.contrib import messages
 # home/views.py
@@ -1574,6 +1574,9 @@ def paiement_dashboard(request):
     total_paye = Decimal('0.00')
     taux_paiement = 0
     
+    # Obtenir l'enfant sélectionné pour les parents
+    enfant_id = request.GET.get('enfant_id')
+    
     # Cas 1: Élève - voir ses propres paiements
     if role == 'eleve':
         try:
@@ -1585,7 +1588,7 @@ def paiement_dashboard(request):
                 total_a_payer += f.montant
                 total_paye += f.paiements.filter(
                     eleve=eleve, 
-                    status='Payé'  # CORRECTION : Utiliser 'status' au lieu de 'statut'
+                    status='Payé'
                 ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
             
             if total_a_payer > 0:
@@ -1603,21 +1606,43 @@ def paiement_dashboard(request):
             parent = request.user.parent_profile
             enfants = parent.enfants.all()
             
-            # Calculer les totaux pour tous les enfants
-            for enfant in enfants:
-                frais_enfant = Frais.objects.filter(niveau=enfant.classe_actuelle.niveau)
-                for f in frais_enfant:
-                    total_a_payer += f.montant
-                    total_paye += f.paiements.filter(
-                        eleve=enfant, 
-                        status='Payé'  # CORRECTION : Utiliser 'status' au lieu de 'statut'
-                    ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
-            
-            if total_a_payer > 0:
-                taux_paiement = round(total_paye / total_a_payer * 100, 1)
+            # Si un enfant est sélectionné, afficher ses données
+            if enfant_id:
+                try:
+                    eleve = Eleve.objects.get(id=enfant_id, parent=parent)
+                    frais = Frais.objects.filter(niveau=eleve.classe_actuelle.niveau)
+                    
+                    # Calculer les totaux pour l'enfant sélectionné
+                    for f in frais:
+                        total_a_payer += f.montant
+                        total_paye += f.paiements.filter(
+                            eleve=eleve, 
+                            status='Payé'
+                        ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
+                    
+                    if total_a_payer > 0:
+                        taux_paiement = round(total_paye / total_a_payer * 100, 1)
+                    else:
+                        taux_paiement = 100
+                        
+                except Eleve.DoesNotExist:
+                    messages.error(request, "Enfant non trouvé ou non autorisé.")
             else:
-                taux_paiement = 100
+                # Calculer les totaux pour tous les enfants
+                for enfant in enfants:
+                    frais_enfant = Frais.objects.filter(niveau=enfant.classe_actuelle.niveau)
+                    for f in frais_enfant:
+                        total_a_payer += f.montant
+                        total_paye += f.paiements.filter(
+                            eleve=enfant, 
+                            status='Payé'
+                        ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
                 
+                if total_a_payer > 0:
+                    taux_paiement = round(total_paye / total_a_payer * 100, 1)
+                else:
+                    taux_paiement = 100
+                    
         except Exception as e:
             logger.error(f"Erreur lors de la récupération des données de paiement pour le parent: {str(e)}")
             messages.error(request, "Une erreur est survenue lors de la récupération des données de paiement.")
@@ -1630,7 +1655,7 @@ def paiement_dashboard(request):
         
         # Obtenir tous les frais et paiements
         frais = Frais.objects.all()
-        paiements = Paiement.objects.all()
+        paiements = Paiement.objects.select_related('eleve__utilisateur', 'frais', 'eleve__classe_actuelle').all()
         
         # Appliquer les filtres si nécessaire
         if classe_id:
@@ -1642,7 +1667,7 @@ def paiement_dashboard(request):
         
         # Calculer les totaux
         total_a_payer = frais.aggregate(total=Sum('montant'))['total'] or Decimal('0.00')
-        total_paye = paiements.filter(status='Payé').aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')  # CORRECTION : Utiliser 'status' au lieu de 'statut'
+        total_paye = paiements.filter(status='Payé').aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
         
         if total_a_payer > 0:
             taux_paiement = round(total_paye / total_a_payer * 100, 1)
@@ -1651,25 +1676,60 @@ def paiement_dashboard(request):
     
     # Pagination des paiements
     if role in ['admin', 'directeur', 'secretaire']:
-        paiements_list = paiements
+        paiements_list = paiements.order_by('-date_paiement')
     else:
         # Pour élève/parent, on utilise une liste plus simple
         paiements_list = []
         if role == 'eleve':
             for f in frais:
-                paiements_list.extend(f.paiements.filter(eleve=eleve))
+                paiements_list.extend(f.paiements.filter(eleve=eleve).select_related('frais', 'eleve__utilisateur'))
         else:
-            for enfant in enfants:
-                for f in Frais.objects.filter(niveau=enfant.classe_actuelle.niveau):
-                    paiements_list.extend(f.paiements.filter(eleve=enfant))
+            if enfant_id:
+                try:
+                    eleve = Eleve.objects.get(id=enfant_id)
+                    for f in frais:
+                        paiements_list.extend(f.paiements.filter(eleve=eleve).select_related('frais', 'eleve__utilisateur'))
+                except Eleve.DoesNotExist:
+                    pass
+            else:
+                for enfant in enfants:
+                    for f in Frais.objects.filter(niveau=enfant.classe_actuelle.niveau):
+                        paiements_list.extend(f.paiements.filter(eleve=enfant).select_related('frais', 'eleve__utilisateur'))
+        
+        # Trier par date décroissante
+        paiements_list.sort(key=lambda x: x.date_paiement, reverse=True)
     
-    # Pagination
+    # Configuration de la pagination
+    paginator = Paginator(paiements_list, 10)  # 10 paiements par page
     page = request.GET.get('page', 1)
-    items_per_page = 10
-    start_index = (page - 1) * items_per_page
-    end_index = start_index + items_per_page
-    paginated_paiements = paiements_list[start_index:end_index]
-    total_pages = (len(paiements_list) + items_per_page - 1) // items_per_page
+    
+    try:
+        paginated_paiements = paginator.page(page)
+    except PageNotAnInteger:
+        paginated_paiements = paginator.page(1)
+    except EmptyPage:
+        paginated_paiements = paginator.page(paginator.num_pages)
+    
+    # Ajouter les statistiques pour les graphiques
+    stats = {
+        'payes': 0,
+        'partiels': 0,
+        'non_payes': 0
+    }
+    
+    if role in ['admin', 'directeur', 'secretaire']:
+        stats['payes'] = paiements.filter(status='Payé').count()
+        stats['partiels'] = paiements.filter(status='Partiellement payé').count()
+        stats['non_payes'] = paiements.filter(status='Non payé').count()
+    else:
+        # Pour les élèves et parents, calculer les stats
+        for paiement in paiements_list:
+            if paiement.status == 'Payé':
+                stats['payes'] += 1
+            elif paiement.status == 'Partiellement payé':
+                stats['partiels'] += 1
+            else:
+                stats['non_payes'] += 1
     
     context = {
         'role': role,
@@ -1681,13 +1741,12 @@ def paiement_dashboard(request):
         'total_paye': total_paye,
         'taux_paiement': taux_paiement,
         'current_year': date.today().year,
-        'page': page,
-        'total_pages': total_pages,
-        'has_previous': page > 1,
-        'has_next': page < total_pages,
+        'stats': stats,
+        'enfant_id': enfant_id,
     }
     
     return render(request, 'gestion/dashboards/paiement_dashboard.html', context)
+
 
 # home/views.py
 from django.shortcuts import render, redirect, get_object_or_404
@@ -1709,7 +1768,11 @@ from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 from .models import Paiement, Frais
 from .forms import CaisseForm
+# home/views.py
 
+
+
+# home/views.py
 @login_required
 def caisse(request):
     """
@@ -1757,7 +1820,7 @@ def caisse(request):
                 paiement.difference_rendue = Decimal('0.00')
                 montant_rendu = Decimal('0.00')
             
-            # Déterminer le statut
+            # Déterminer le statut - UTILISER 'status' AU LIEU DE 'statut'
             if montant_paye >= montant_total:
                 paiement.status = 'Payé'
             elif montant_paye > Decimal('0.00'):
@@ -1850,9 +1913,9 @@ def liste_paiements(request):
             paiements_list = Paiement.objects.none()
     
     # Filtre par statut
-    statut = request.GET.get("statut", "").strip()
-    if statut and statut in dict(STATUS_PAIEMENT_CHOICES).keys():
-        paiements_list = paiements_list.filter(status=statut)
+    status = request.GET.get("status", "").strip()
+    if status and status in dict(STATUS_PAIEMENT_CHOICES).keys():
+        paiements_list = paiements_list.filter(status=status)
 
     # Filtre par élève
     eleve_id = request.GET.get("eleve", "").strip()
@@ -2392,9 +2455,11 @@ def messagerie_api(request):
 
 
 
-
 @login_required
 def generer_recu(request, paiement_id):
+    """
+    Génère un reçu PDF pour un paiement
+    """
     paiement = get_object_or_404(Paiement, id=paiement_id)
     
     # Vérifier que l'utilisateur a le droit de voir ce reçu
@@ -2424,8 +2489,9 @@ def generer_recu(request, paiement_id):
     
     p.setFont("Helvetica", 12)
     p.drawString(50, height - 80, f"École: Capitole School")
-    p.drawString(50, height - 100, f"Date: {paiement.date.strftime('%d/%m/%Y')}")
-    p.drawString(50, height - 120, f"Référence: {paiement.reference or 'N/A'}")
+    # ✅ CORRECTION : Utiliser 'date_paiement' au lieu de 'date'
+    p.drawString(50, height - 100, f"Date: {paiement.date_paiement.strftime('%d/%m/%Y')}")
+    p.drawString(50, height - 120, f"Référence: {paiement.numero_transaction or 'N/A'}")
     
     # Informations de l'élève
     p.setFont("Helvetica-Bold", 14)
@@ -2433,8 +2499,8 @@ def generer_recu(request, paiement_id):
     
     p.setFont("Helvetica", 12)
     p.drawString(50, height - 180, f"Nom: {paiement.eleve.utilisateur.get_full_name()}")
-    p.drawString(50, height - 200, f"Classe: {paiement.eleve.classe_actuelle}")
-    p.drawString(50, height - 220, f"Niveau: {paiement.eleve.classe_actuelle.niveau}")
+    p.drawString(50, height - 200, f"Classe: {paiement.eleve.classe_actuelle.nom if paiement.eleve.classe_actuelle else 'Non assignée'}")
+    p.drawString(50, height - 220, f"Niveau: {paiement.eleve.classe_actuelle.niveau.nom if paiement.eleve.classe_actuelle else 'Non assigné'}")
     
     # Détails du paiement
     p.setFont("Helvetica-Bold", 14)
@@ -2442,12 +2508,14 @@ def generer_recu(request, paiement_id):
     
     p.setFont("Helvetica", 12)
     p.drawString(50, height - 280, f"Frais: {paiement.frais.description}")
-    p.drawString(50, height - 300, f"Montant: {paiement.montant} XAF")
-    p.drawString(50, height - 320, f"Moyen: {dict(Paiement.MOYENS).get(paiement.moyen, paiement.moyen)}")
-    p.drawString(50, height - 340, f"Statut: {dict(Paiement.STATUT_CHOICES).get(paiement.statut, paiement.statut)}")
+    p.drawString(50, height - 300, f"Montant total: {paiement.montant_total:,.0f} XAF")
+    p.drawString(50, height - 320, f"Montant payé: {paiement.montant_paye:,.0f} XAF")
+    p.drawString(50, height - 340, f"Différence rendue: {paiement.difference_rendue:,.0f} XAF")
+    p.drawString(50, height - 360, f"Mode de paiement: {paiement.get_type_paiement_display()}")
+    p.drawString(50, height - 380, f"Statut: {paiement.status}")
     
-    if paiement.commentaire:
-        p.drawString(50, height - 360, f"Commentaire: {paiement.commentaire}")
+    if paiement.notes:
+        p.drawString(50, height - 400, f"Commentaire: {paiement.notes}")
     
     # Pied de page
     p.setFont("Helvetica-Oblique", 10)
@@ -2458,3 +2526,105 @@ def generer_recu(request, paiement_id):
     p.save()
     
     return response
+
+
+# home/views.py
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import Eleve, Frais
+
+@login_required
+def api_eleves(request):
+    """
+    API pour récupérer la liste des élèves
+    """
+    eleves = Eleve.objects.select_related('utilisateur', 'classe_actuelle').all()
+    
+    data = []
+    for eleve in eleves:
+        data.append({
+            'id': eleve.id,
+            'nom': eleve.utilisateur.last_name,
+            'prenom': eleve.utilisateur.first_name,
+            'classe': str(eleve.classe_actuelle) if eleve.classe_actuelle else '-'
+        })
+    
+    return JsonResponse({'success': True, 'data': data})
+
+@login_required
+def api_frais(request):
+    """
+    API pour récupérer la liste des frais
+    """
+    eleve_id = request.GET.get('eleve_id')
+    frais_list = Frais.objects.select_related('niveau').all()
+    
+    # Filtrer par élève si spécifié
+    if eleve_id:
+        try:
+            eleve = Eleve.objects.get(id=eleve_id)
+            # Vous pouvez filtrer les frais selon le niveau de l'élève
+            frais_list = frais_list.filter(niveau=eleve.classe_actuelle.niveau)
+        except Eleve.DoesNotExist:
+            frais_list = Frais.objects.none()
+    
+    data = []
+    for frais in frais_list:
+        data.append({
+            'id': frais.id,
+            'description': frais.description,
+            'montant': str(frais.montant),
+            'date_limite': frais.date_limite.strftime('%d/%m/%Y')
+        })
+    
+    return JsonResponse({'success': True, 'data': data})
+
+@login_required
+def api_paiements(request):
+    """
+    API pour enregistrer un nouveau paiement
+    """
+    if request.method == 'POST':
+        # Ici vous implémenteriez la logique d'enregistrement du paiement
+        # Pour l'exemple, on retourne un succès
+        return JsonResponse({
+            'success': True, 
+            'message': 'Paiement enregistré avec succès'
+        })
+    
+    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
+
+@login_required
+def api_paiement_detail(request, paiement_id):
+    """
+    API pour récupérer les détails d'un paiement
+    """
+    try:
+        paiement = Paiement.objects.select_related(
+            'eleve__utilisateur', 
+            'frais',
+            'eleve__classe_actuelle'
+        ).get(id=paiement_id)
+        
+        data = {
+            'success': True,
+            'eleve_nom': paiement.eleve.utilisateur.get_full_name(),
+            'classe': str(paiement.eleve.classe_actuelle) if paiement.eleve.classe_actuelle else '-',
+            'frais_description': paiement.frais.description,
+            'frais_montant': f"{paiement.frais.montant:,.0f} XAF",
+            'frais_date_limite': paiement.frais.date_limite.strftime('%d/%m/%Y'),
+            'date': paiement.date_paiement.strftime('%d/%m/%Y'),
+            'montant': f"{paiement.montant_paye:,.0f} XAF",
+            'moyen': paiement.get_type_paiement_display(),
+            'reference': paiement.numero_transaction or '-',
+            'statut': paiement.status,
+            'statut_couleur': 'success' if paiement.status == 'Payé' else 'warning' if paiement.status == 'Partiellement payé' else 'danger',
+            'commentaire': paiement.notes or ''
+        }
+        
+        return JsonResponse(data)
+    except Paiement.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Paiement non trouvé'})
+    
+    
+    

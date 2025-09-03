@@ -1,0 +1,193 @@
+<!-- templates/gestion/paiements/detail_paiement.html -->
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Détails du paiement{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:paiement_dashboard' %}">Paiements</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Détails</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Paiements</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                            <i class="fas fa-wallet me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:caisse' %}">
+                            <i class="fas fa-cash-register me-2"></i> Caisse
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:liste_paiements' %}">
+                            <i class="fas fa-history me-2"></i> Historique
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">
+                    <i class="fas fa-receipt me-2"></i> Détails du paiement
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{% url 'home:paiement_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Retour
+                    </a>
+                    <a href="{% url 'home:generer_recu' paiement.id %}" class="btn btn-sm btn-outline-success ms-2" target="_blank">
+                        <i class="fas fa-download me-1"></i> Télécharger le reçu
+                    </a>
+                </div>
+            </div>
+
+            <!-- Détails du paiement -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-primary d-flex align-items-center">
+                            <i class="fas fa-receipt me-2"></i>
+                            <h5 class="mb-0">Informations du paiement</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-user me-2"></i>Élève</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.eleve.utilisateur.get_full_name }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-file-invoice me-2"></i>Frais</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.frais.description }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-calendar me-2"></i>Date de paiement</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.date_paiement|date:"d/m/Y" }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-money-bill-wave me-2"></i>Montant payé</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        <strong>{{ paiement.montant_paye|floatformat:0 }} XAF</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-wallet me-2"></i>Montant total</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.montant_total|floatformat:0 }} XAF
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-calculator me-2"></i>Différence rendue</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.difference_rendue|floatformat:0 }} XAF
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-credit-card me-2"></i>Mode de paiement</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.get_type_paiement_display }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-barcode me-2"></i>Référence transaction</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.numero_transaction|default:"-" }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-info-circle me-2"></i>Statut</label>
+                                    <div class="bg-secondary p-2 rounded">
+                                        <span class="badge bg-{% if paiement.status == 'Payé' %}success{% elif paiement.status == 'Partiellement payé' %}warning{% elif paiement.status == 'Non payé' %}danger{% else %}secondary{% endif %}">
+                                            {{ paiement.status }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white"><i class="fas fa-user-tie me-2"></i>Enregistré par</label>
+                                    <div class="bg-secondary p-2 rounded text-white">
+                                        {{ paiement.personnel.get_full_name }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if paiement.notes %}
+                            <div class="mb-3">
+                                <label class="form-label text-white"><i class="fas fa-sticky-note me-2"></i>Notes</label>
+                                <div class="bg-secondary p-3 rounded text-white">
+                                    {{ paiement.notes }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statistiques -->
+                <div class="col-md-4">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-success d-flex align-items-center">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            <h5 class="mb-0">Statistiques</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-white">Total payé:</span>
+                                <strong class="text-success">{{ paiement.montant_paye|floatformat:0 }} XAF</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-white">Reste à payer:</span>
+                                <strong class="text-danger">
+                                    {{ reste_a_payer|floatformat:0 }} XAF
+                                </strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-white">Taux de paiement:</span>
+                                <strong class="text-info">{{ taux_paiement }}%</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    {% if user.role in 'secretaire,admin,directeur' %}
+                    <div class="card bg-dark shadow mt-3">
+                        <div class="card-header bg-gradient-warning d-flex align-items-center">
+                            <i class="fas fa-cogs me-2"></i>
+                            <h5 class="mb-0">Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <a href="{% url 'home:caisse' %}" class="btn btn-success w-100 mb-2">
+                                <i class="fas fa-plus me-2"></i> Nouveau paiement
+                            </a>
+                            <a href="{% url 'home:generer_recu' paiement.id %}" class="btn btn-info w-100 mb-2" target="_blank">
+                                <i class="fas fa-file-pdf me-2"></i> Générer PDF
+                            </a>
+                            <a href="{% url 'home:paiement_dashboard' %}" class="btn btn-secondary w-100">
+                                <i class="fas fa-arrow-left me-2"></i> Retour
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

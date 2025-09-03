@@ -1,19 +1,323 @@
-# gestion/forms.py
-
-from django import forms
-from django.contrib.auth.forms import UserCreationForm
-from .models import Parent, Utilisateur
 # home/forms.py
 from django import forms
 from django.utils.translation import gettext_lazy as _
-from .models import Cycle, Niveau
+from django.core.exceptions import ValidationError
+from decimal import Decimal
+from datetime import date, timedelta
+from .models import Eleve, Frais, Paiement, Classe, Niveau, Cycle, Parent, Utilisateur
+
+# ===========================
+# Formulaire : Caisse enregistreuse
+# ===========================
 # home/forms.py
 from django import forms
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from .models import Classe, Eleve, Niveau
+from django.utils.translation import gettext_lazy as _
+from .models import Frais, Niveau
+from decimal import Decimal
 
-User = get_user_model()
+# ===========================
+# Formulaire : Ajout de frais
+# ===========================
+class FraisForm(forms.ModelForm):
+    """
+    Formulaire pour créer ou modifier des frais scolaires.
+    Optimisé pour le déploiement en production selon les bonnes pratiques Django.
+    """
+    class Meta:
+        model = Frais
+        fields = ['niveau', 'categorie', 'description', 'montant', 'date_limite']
+        widgets = {
+            'niveau': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'categorie': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'description': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Ex: Frais de scolarité trimestriel'),
+                'required': True
+            }),
+            'montant': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'step': '1',
+                'placeholder': '0'
+            }),
+            'date_limite': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            })
+        }
+        labels = {
+            'niveau': _("Niveau"),
+            'categorie': _("Catégorie"),
+            'description': _("Description"),
+            'montant': _("Montant (XAF)"),
+            'date_limite': _("Date limite de paiement")
+        }
+        help_texts = {
+            'montant': _("Montant en Francs CFA - pas de décimales nécessaires"),
+            'date_limite': _("Date à laquelle le paiement doit être effectué")
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Tri des niveaux pour une meilleure performance
+        self.fields['niveau'].queryset = Niveau.objects.select_related('cycle').all().order_by(
+            'cycle__nom', 'nom'
+        )
+        
+        # Initialiser la date limite à demain par défaut
+        if not self.instance.pk:
+            tomorrow = date.today() + timedelta(days=1)
+            self.fields['date_limite'].initial = tomorrow
+
+    def clean_montant(self):
+        """Validation du montant"""
+        montant = self.cleaned_data.get('montant')
+        
+        # Vérifier que le montant est positif
+        if montant <= 0:
+            raise forms.ValidationError(
+                _("Le montant doit être supérieur à zéro")
+            )
+        
+        # Utiliser Decimal pour éviter les problèmes de précision
+        return Decimal(str(montant))
+
+    def clean_date_limite(self):
+        """Validation de la date limite"""
+        date_limite = self.cleaned_data.get('date_limite')
+        
+        # Vérifier que la date n'est pas dans le passé
+        if date_limite < date.today():
+            raise forms.ValidationError(
+                _("La date limite ne peut pas être dans le passé")
+            )
+        
+        return date_limite
+
+    def clean(self):
+        """Validation croisée des champs"""
+        cleaned_data = super().clean()
+        categorie = cleaned_data.get('categorie')
+        description = cleaned_data.get('description')
+        
+        # Vérifier que la description n'est pas vide
+        if description and len(description.strip()) < 5:
+            self.add_error('description', 
+                          _("La description doit contenir au moins 5 caractères"))
+        
+        return cleaned_data
+    
+    
+
+
+class CaisseForm(forms.Form):
+    """Formulaire simplifié pour la caisse enregistreuse (style supermarché)"""
+    
+    eleve = forms.ModelChoiceField(
+        queryset=Eleve.objects.select_related('utilisateur', 'classe_actuelle').all(),
+        label=_("Élève"),
+        widget=forms.Select(attrs={
+            'class': 'form-select form-select-lg',
+            'id': 'eleve-select'
+        }),
+        empty_label=_("Sélectionnez un élève")
+    )
+    
+    frais = forms.ModelChoiceField(
+        queryset=Frais.objects.select_related('niveau').all(),
+        label=_("Frais à payer"),
+        widget=forms.Select(attrs={
+            'class': 'form-select form-select-lg',
+            'id': 'frais-select'
+        }),
+        empty_label=_("Sélectionnez les frais")
+    )
+    
+    montant_paye = forms.DecimalField(
+        label=_("Montant payé"),
+        max_digits=10,
+        decimal_places=0,  # Pas de décimales pour les XAF
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-lg',
+            'id': 'montant-pay',
+            'placeholder': '0',
+            'step': '1',
+            'autofocus': 'autofocus'
+        })
+    )
+    
+    type_paiement = forms.ChoiceField(
+        choices=[
+            ('Espèces', _('Espèces')),
+            ('Carte Bancaire', _('Carte Bancaire (Visa/MasterCard)')),
+            ('Mobile Money', _('Mobile Money')),
+            ('Airtel Money', _('Airtel Money')),
+            ('OnyFast', _('OnyFast')),
+            ('Virement', _('Virement bancaire')),
+            ('Assurance', _('Paiement par assurance')),
+            ('Autre', _('Autre')),
+        ],
+        label=_("Mode de paiement"),
+        widget=forms.Select(attrs={
+            'class': 'form-select form-select-lg',
+            'id': 'type-paiement'
+        })
+    )
+    
+    numero_transaction = forms.CharField(
+        label=_("Référence de transaction"),
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control form-control-lg',
+            'id': 'numero-transaction',
+            'placeholder': _('Référence de transaction')
+        })
+    )
+    
+    def __init__(self, *args, **kwargs):
+        """Initialisation du formulaire avec des données optionnelles"""
+        eleve_id = kwargs.pop('eleve_id', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrer les élèves si nécessaire
+        if eleve_id:
+            self.fields['eleve'].queryset = Eleve.objects.filter(id=eleve_id).select_related('utilisateur', 'classe_actuelle')
+        
+        # Si un élève est fourni dans les données initiales
+        if 'initial' in kwargs and 'eleve' in kwargs['initial']:
+            eleve_id = kwargs['initial']['eleve']
+            try:
+                eleve = Eleve.objects.get(id=eleve_id)
+                self.fields['frais'].queryset = Frais.objects.filter(
+                    niveau=eleve.classe_actuelle.niveau
+                ).order_by('date_limite')
+            except Eleve.DoesNotExist:
+                self.fields['frais'].queryset = Frais.objects.none()
+    
+    def clean_montant_paye(self):
+        """Validation du montant payé"""
+        montant_paye = self.cleaned_data.get('montant_paye')
+        
+        # Vérifier que le montant est positif
+        if montant_paye <= 0:
+            raise ValidationError(
+                _("Le montant payé doit être supérieur à zéro")
+            )
+        
+        return montant_paye
+    
+    def clean(self):
+        """Validation croisée des champs"""
+        cleaned_data = super().clean()
+        eleve = cleaned_data.get('eleve')
+        frais = cleaned_data.get('frais')
+        montant_paye = cleaned_data.get('montant_paye')
+        
+        # Vérifier que l'élève et les frais sont sélectionnés
+        if eleve and frais:
+            # Calculer le montant restant
+            montant_restant = frais.get_montant_restant(eleve)
+            montant_total = frais.montant
+            
+            # Vérifier que le montant payé ne dépasse pas le montant total
+            if montant_paye > (montant_total + montant_restant):
+                self.add_error('montant_paye', 
+                              _("Le montant payé ne peut pas dépasser le montant total des frais"))
+        
+        return cleaned_data
+
+
+# ===========================
+# Formulaire : Paiement
+# ===========================
+class PaiementForm(forms.ModelForm):
+    """Formulaire pour enregistrer un paiement"""
+    
+    class Meta:
+        model = Paiement
+        fields = ['eleve', 'frais', 'montant_paye', 'type_paiement', 'numero_transaction', 'notes', 'date_paiement']
+        widgets = {
+            'eleve': forms.Select(attrs={'class': 'form-select'}),
+            'frais': forms.Select(attrs={'class': 'form-select'}),
+            'montant_paye': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'type_paiement': forms.Select(attrs={'class': 'form-select'}),
+            'numero_transaction': forms.TextInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'date_paiement': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+        labels = {
+            'eleve': _('Élève'),
+            'frais': _('Frais'),
+            'montant_paye': _('Montant payé (XAF)'),
+            'type_paiement': _('Mode de paiement'),
+            'numero_transaction': _('Référence de transaction'),
+            'notes': _('Notes'),
+            'date_paiement': _('Date du paiement'),
+        }
+
+    def __init__(self, *args, **kwargs):
+        eleve_id = kwargs.pop('eleve_id', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrer les élèves si nécessaire
+        if eleve_id:
+            self.fields['eleve'].queryset = Eleve.objects.filter(id=eleve_id).select_related('utilisateur', 'classe_actuelle')
+        
+        # Initialiser la date à aujourd'hui
+        if not self.instance.pk:
+            self.fields['date_paiement'].initial = date.today()
+        
+        # Si un élève est fourni dans les données initiales
+        if 'initial' in kwargs and 'eleve' in kwargs['initial']:
+            eleve_id = kwargs['initial']['eleve']
+            try:
+                eleve = Eleve.objects.get(id=eleve_id)
+                self.fields['frais'].queryset = Frais.objects.filter(
+                    niveau=eleve.classe_actuelle.niveau
+                ).select_related('niveau').order_by('date_limite')
+            except Eleve.DoesNotExist:
+                self.fields['frais'].queryset = Frais.objects.none()
+    
+    def clean_montant_paye(self):
+        """Validation du montant payé"""
+        montant_paye = self.cleaned_data.get('montant_paye')
+        
+        # Vérifier que le montant est positif
+        if montant_paye <= 0:
+            raise ValidationError(
+                _("Le montant payé doit être supérieur à zéro")
+            )
+        
+        return montant_paye
+    
+    def clean(self):
+        """Validation croisée des champs"""
+        cleaned_data = super().clean()
+        eleve = cleaned_data.get('eleve')
+        frais = cleaned_data.get('frais')
+        montant_paye = cleaned_data.get('montant_paye')
+        
+        # Vérifier que l'élève et les frais sont sélectionnés
+        if eleve and frais:
+            # Calculer le montant restant
+            montant_restant = frais.get_montant_restant(eleve)
+            
+            # Vérifier que le montant payé ne dépasse pas le montant restant
+            if montant_paye > montant_restant:
+                self.add_error('montant_paye', 
+                              _("Le montant ne peut pas dépasser %(montant)s XAF (montant restant)") % 
+                              {'montant': montant_restant})
+        
+        return cleaned_data
 
 
 # ===========================
@@ -22,25 +326,26 @@ User = get_user_model()
 class ClasseForm(forms.ModelForm):
     """
     Formulaire pour créer ou modifier une classe.
+    Optimisé pour le déploiement en production.
     """
     class Meta:
         model = Classe
         fields = ['niveau', 'nom', 'effectif_max']
         widgets = {
             'niveau': forms.Select(attrs={
-                'class': 'form-control',
+                'class': 'form-select',
                 'required': True
             }),
             'nom': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Ex: A, B, C, D',
+                'placeholder': _('Ex: A, B, C, D'),
                 'required': True
             }),
             'effectif_max': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': '1',
                 'max': '150',
-                'placeholder': 'Max: 100'
+                'placeholder': _('Max: 100')
             })
         }
         labels = {
@@ -55,7 +360,7 @@ class ClasseForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Optionnel : trier les niveaux
+        # Tri des niveaux pour améliorer la performance
         self.fields['niveau'].queryset = Niveau.objects.select_related('cycle').all().order_by('cycle__nom', 'nom')
 
     def clean(self):
@@ -78,6 +383,7 @@ class ClasseForm(forms.ModelForm):
 class EleveForm(forms.ModelForm):
     """
     Formulaire pour créer ou modifier un élève.
+    Optimisé pour le déploiement en production.
     """
     # Champs liés à l'utilisateur
     first_name = forms.CharField(
@@ -93,11 +399,11 @@ class EleveForm(forms.ModelForm):
     username = forms.CharField(
         label=_("Nom d'utilisateur"),
         max_length=150,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: jdupont'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Ex: jdupont')})
     )
     email = forms.EmailField(
         label=_("Email"),
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'j.dupont@email.com'})
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': _('j.dupont@email.com')})
     )
     password1 = forms.CharField(
         label=_("Mot de passe"),
@@ -117,12 +423,12 @@ class EleveForm(forms.ModelForm):
             'contact_urgence', 'infos_medicaux', 'classe_actuelle'
         ]
         widgets = {
-            'matricule': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'EL001'}),
+            'matricule': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('EL001')}),
             'date_naissance': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'genre': forms.Select(attrs={'class': 'form-control'}),
+            'genre': forms.Select(attrs={'class': 'form-select'}),
             'contact_urgence': forms.TextInput(attrs={'class': 'form-control'}),
             'infos_medicaux': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'classe_actuelle': forms.Select(attrs={'class': 'form-control'}),
+            'classe_actuelle': forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
             'matricule': _("Matricule"),
@@ -144,13 +450,13 @@ class EleveForm(forms.ModelForm):
             self.fields['username'].initial = user.username
             self.fields['email'].initial = user.email
 
-        # Filtrer les classes disponibles
+        # Filtrer les classes disponibles avec optimisation des requêtes
         self.fields['classe_actuelle'].queryset = Classe.objects.select_related('niveau').all().order_by('niveau__cycle__nom', 'niveau__nom', 'nom')
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
         if username:
-            if User.objects.filter(username=username).exclude(
+            if Utilisateur.objects.filter(username=username).exclude(
                 pk=self.instance.utilisateur.pk if self.instance.pk else None
             ).exists():
                 raise ValidationError(_("Ce nom d'utilisateur est déjà utilisé."))
@@ -159,7 +465,7 @@ class EleveForm(forms.ModelForm):
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if email:
-            if User.objects.filter(email=email).exclude(
+            if Utilisateur.objects.filter(email=email).exclude(
                 pk=self.instance.utilisateur.pk if self.instance.pk else None
             ).exists():
                 raise ValidationError(_("Cet email est déjà utilisé."))
@@ -182,7 +488,7 @@ class EleveForm(forms.ModelForm):
         if self.instance.pk:
             user = self.instance.utilisateur
         else:
-            user = User(role='eleve')
+            user = Utilisateur(role='eleve')
 
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
@@ -206,12 +512,15 @@ class EleveForm(forms.ModelForm):
         return eleve
 
 
-class RegisterForm(UserCreationForm):
+# ===========================
+# Formulaire : Inscription
+# ===========================
+class RegisterForm(forms.ModelForm):
     email = forms.EmailField(
         required=True,
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'exemple@ecole.com'
+            'placeholder': _('exemple@ecole.com')
         })
     )
     first_name = forms.CharField(
@@ -219,7 +528,7 @@ class RegisterForm(UserCreationForm):
         required=True,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Jean'
+            'placeholder': _('Jean')
         })
     )
     last_name = forms.CharField(
@@ -227,19 +536,19 @@ class RegisterForm(UserCreationForm):
         required=True,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Dupont'
+            'placeholder': _('Dupont')
         })
     )
     role = forms.ChoiceField(
         choices=Utilisateur.ROLES,
         widget=forms.Select(attrs={
-            'class': 'form-control'
+            'class': 'form-select'
         })
     )
     username = forms.CharField(
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'jean_dupont'
+            'placeholder': _('jean_dupont')
         })
     )
     password1 = forms.CharField(
@@ -249,7 +558,7 @@ class RegisterForm(UserCreationForm):
         })
     )
     password2 = forms.CharField(
-        label="Confirmation du mot de passe",
+        label=_("Confirmation du mot de passe"),
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
             'placeholder': '••••••••'
@@ -260,7 +569,35 @@ class RegisterForm(UserCreationForm):
         model = Utilisateur
         fields = ('username', 'email', 'first_name', 'last_name', 'role', 'password1', 'password2')
         
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if Utilisateur.objects.filter(username=username).exists():
+            raise ValidationError(_("Ce nom d'utilisateur est déjà utilisé."))
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if Utilisateur.objects.filter(email=email).exists():
+            raise ValidationError(_("Cet email est déjà utilisé."))
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get("password1")
+        password2 = cleaned_data.get("password2")
+
+        if password1 and password2 and password1 != password2:
+            raise ValidationError(_("Les mots de passe ne correspondent pas."))
         
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+        return user
+
 
 # ===========================
 # Formulaire : Cycle
@@ -268,6 +605,7 @@ class RegisterForm(UserCreationForm):
 class CycleForm(forms.ModelForm):
     """
     Formulaire pour créer ou modifier un cycle scolaire.
+    Optimisé pour le déploiement en production.
     """
     class Meta:
         model = Cycle
@@ -275,7 +613,7 @@ class CycleForm(forms.ModelForm):
         widgets = {
             'nom': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Ex: Primaire, Secondaire, Collège, Lycée',
+                'placeholder': _('Ex: Primaire, Secondaire, Collège, Lycée'),
                 'required': True
             })
         }
@@ -304,19 +642,19 @@ class CycleForm(forms.ModelForm):
 class NiveauForm(forms.ModelForm):
     """
     Formulaire pour créer ou modifier un niveau scolaire.
-    Le cycle est sélectionnable, et le nom est unique par cycle.
+    Optimisé pour le déploiement en production.
     """
     class Meta:
         model = Niveau
         fields = ['cycle', 'nom']
         widgets = {
             'cycle': forms.Select(attrs={
-                'class': 'form-control',
+                'class': 'form-select',
                 'required': True
             }),
             'nom': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Ex: 6e, 5e, 4e, 3e, 2nd, 1ère, Terminale',
+                'placeholder': _('Ex: 6e, 5e, 4e, 3e, 2nd, 1ère, Terminale'),
                 'required': True
             })
         }
@@ -330,11 +668,8 @@ class NiveauForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Optionnel : trier les cycles par nom
+        # Tri des cycles pour améliorer la performance
         self.fields['cycle'].queryset = Cycle.objects.all().order_by('nom')
-        if self.instance.pk:
-            # Si modification, affiche le cycle actuel même s'il est désactivé
-            pass
 
     def clean(self):
         cleaned_data = super().clean()
@@ -357,11 +692,15 @@ class NiveauForm(forms.ModelForm):
         if nom:
             return nom.strip().title()
         return nom
-    
 
+
+# ===========================
+# Formulaire : Enseignant
+# ===========================
 class EnseignantForm(forms.ModelForm):
     """
     Formulaire pour créer ou modifier un enseignant.
+    Optimisé pour le déploiement en production.
     """
     first_name = forms.CharField(
         label=_("Prénom"),
@@ -376,16 +715,16 @@ class EnseignantForm(forms.ModelForm):
     username = forms.CharField(
         label=_("Nom d'utilisateur"),
         max_length=150,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: m_dupont'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Ex: m_dupont')})
     )
     email = forms.EmailField(
         label=_("Email"),
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'm.dupont@email.com'})
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': _('m.dupont@email.com')})
     )
     telephone = forms.CharField(
         label=_("Téléphone"),
         max_length=15,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+237 6XX XXX XXX'}),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('+237 6XX XXX XXX')}),
         required=False
     )
     password1 = forms.CharField(
@@ -413,14 +752,14 @@ class EnseignantForm(forms.ModelForm):
     def clean_username(self):
         username = self.cleaned_data.get('username')
         if username:
-            if User.objects.filter(username=username).exclude(pk=self.instance.pk).exists():
+            if Utilisateur.objects.filter(username=username).exclude(pk=self.instance.pk).exists():
                 raise ValidationError(_("Ce nom d'utilisateur est déjà utilisé."))
         return username
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if email:
-            if User.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
+            if Utilisateur.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
                 raise ValidationError(_("Cet email est déjà utilisé."))
         return email
 
@@ -437,7 +776,7 @@ class EnseignantForm(forms.ModelForm):
         if self.instance.pk:
             user = self.instance
         else:
-            user = User(role='enseignant')
+            user = Utilisateur(role='enseignant')
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
         user.username = self.cleaned_data['username']
@@ -451,13 +790,11 @@ class EnseignantForm(forms.ModelForm):
         if commit:
             user.save()
         return user
-    
-    
 
 
-
-User = get_user_model()
-
+# ===========================
+# Formulaire : Parent
+# ===========================
 class ParentForm(forms.ModelForm):
     first_name = forms.CharField(
         label=_("Prénom"),
@@ -472,16 +809,16 @@ class ParentForm(forms.ModelForm):
     username = forms.CharField(
         label=_("Nom d'utilisateur"),
         max_length=150,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: m_kouma'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Ex: m_kouma')})
     )
     email = forms.EmailField(
         label=_("Email"),
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'm.kouma@email.com'})
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': _('m.kouma@email.com')})
     )
     telephone = forms.CharField(
         label=_("Téléphone"),
         max_length=15,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+237 6XX XXX XXX'}),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('+237 6XX XXX XXX')}),
         required=False
     )
     password1 = forms.CharField(
@@ -496,7 +833,7 @@ class ParentForm(forms.ModelForm):
     )
     enfants = forms.ModelMultipleChoiceField(
         queryset=Eleve.objects.all(),
-        widget=forms.SelectMultiple(attrs={'class': 'form-control', 'size': '8'}),
+        widget=forms.SelectMultiple(attrs={'class': 'form-select', 'size': '8'}),
         required=False,
         label=_("Associer des enfants")
     )
@@ -509,7 +846,7 @@ class ParentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
             try:
-                parent = self.instance.parent_profile
+                parent = Parent.objects.get(utilisateur=self.instance)
                 self.fields['enfants'].initial = parent.enfants.all()
             except Parent.DoesNotExist:
                 pass
@@ -517,13 +854,13 @@ class ParentForm(forms.ModelForm):
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
-        if username and User.objects.filter(username=username).exclude(pk=self.instance.pk).exists():
+        if username and Utilisateur.objects.filter(username=username).exclude(pk=self.instance.pk).exists():
             raise ValidationError(_("Ce nom d'utilisateur est déjà utilisé."))
         return username
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if email and User.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
+        if email and Utilisateur.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
             raise ValidationError(_("Cet email est déjà utilisé."))
         return email
 
@@ -540,7 +877,7 @@ class ParentForm(forms.ModelForm):
         if self.instance.pk:
             user = self.instance
         else:
-            user = User(role='parent')
+            user = Utilisateur(role='parent')
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
         user.username = self.cleaned_data['username']

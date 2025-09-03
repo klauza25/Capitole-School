@@ -1,0 +1,198 @@
+<!-- templates/gestion/messagerie/detail.html -->
+{% extends "gestion/base.html" %}
+{% load static humanize %}
+{% block title %}{{ message.objet }} - Messagerie{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link active" href="{% url 'home:messagerie' %}">Messagerie</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:notifications' %}">Notifications</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Messagerie</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:messagerie' %}">
+                            <i class="fas fa-inbox me-2"></i> Boîte de réception
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:messagerie' %}?boite=sent">
+                            <i class="fas fa-paper-plane me-2"></i> Messages envoyés
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:messagerie_nouveau' %}">
+                            <i class="fas fa-edit me-2"></i> Nouveau message
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">{{ message.objet }}</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{% url 'home:messagerie_repondre' message.id %}" class="btn btn-sm btn-outline-success me-2">
+                        <i class="fas fa-reply me-1"></i> Répondre
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="supprimerMessageBtn">
+                        <i class="fas fa-trash me-1"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+
+            <!-- En-tête du message -->
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title text-white">
+                                <i class="fas fa-user me-2"></i>
+                                {% if message.expediteur == request.user %}
+                                    À: {{ message.destinataire.get_full_name }}
+                                {% else %}
+                                    De: {{ message.expediteur.get_full_name }}
+                                {% endif %}
+                            </h5>
+                            <p class="card-text text-muted mb-0">
+                                <i class="far fa-clock me-1"></i> 
+                                {{ message.date_envoi|naturaltime }}
+                                {% if not message.lu and message.destinataire == request.user %}
+                                    <span class="badge bg-primary ms-2">Non lu</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="dropdownMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenu">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'home:messagerie_repondre' message.id %}">
+                                        <i class="fas fa-reply me-2"></i> Répondre
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="#" id="supprimerMessageDropdown">
+                                        <i class="fas fa-trash me-2"></i> Supprimer
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenu du message -->
+            <div class="card bg-dark border-secondary">
+                <div class="card-body">
+                    <p class="card-text text-white" style="white-space: pre-wrap;">{{ message.contenu }}</p>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Supprimer un message
+    function supprimerMessage() {
+        fetch('{% url 'home:messagerie_supprimer' %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ 
+                id: {{ message.id }},
+                type: '{% if message.expediteur == request.user %}expediteur{% else %}destinataire{% endif %}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess(data.message || 'Message supprimé avec succès');
+                setTimeout(() => {
+                    window.location.href = "{% url 'home:messagerie' %}";
+                }, 1500);
+            } else {
+                showError(data.error || 'Erreur lors de la suppression du message');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur de communication avec le serveur');
+        });
+    }
+    
+    // Écouter les clics sur les boutons de suppression
+    document.getElementById('supprimerMessageBtn').addEventListener('click', supprimerMessage);
+    document.getElementById('supprimerMessageDropdown').addEventListener('click', function(e) {
+        e.preventDefault();
+        supprimerMessage();
+    });
+    
+    // Fonctions utilitaires
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showSuccess(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 3000);
+    }
+    
+    function showError(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

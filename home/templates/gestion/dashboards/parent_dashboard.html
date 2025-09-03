@@ -1,5 +1,6 @@
 <!-- templates/gestion/dashboards/parent_dashboard.html -->
 {% extends "gestion/base.html" %}
+{% load static %}
 {% block title %}Dashboard Parent - Capitole School{% endblock %}
 
 {% block nav_links %}
@@ -11,147 +12,235 @@
 
 {% block content %}
 <div class="container-fluid p-0">
-    <!-- Sidebar fixe -->
-    <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
-        <div class="position-sticky vh-100 py-3">
-            <h5 class="px-3 mb-3 text-white">Parent</h5>
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link active text-white" href="#">
-                        <i class="fas fa-home me-2"></i> Tableau de bord
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" href="#">
-                        <i class="fas fa-user-graduate me-2"></i> Mes enfants
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" href="#">
-                        <i class="fas fa-clipboard me-2"></i> Notes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" href="#">
-                        <i class="fas fa-calendar-alt me-2"></i> Emploi du temps
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-danger" href="{% url 'home:logout' %}">
-                        <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </nav>
+    <div class="row g-0">
+        <!-- Sidebar fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3">
+                <h5 class="px-3 mb-3 text-white">Parent</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-home me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-user-graduate me-2"></i> Mes enfants
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-clipboard me-2"></i> Notes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-calendar-alt me-2"></i> Emploi du temps
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-danger" href="{% url 'home:logout' %}">
+                            <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
 
-    <!-- Main Content -->
-    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
-        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2 text-white">
-                Bonjour, <strong>{{ user.role|title }}</strong> - {{ user.first_name }} {{ user.last_name }}
-            </h1>
-        </div>
-
-        {% if enfants_avec_notes %}
-            {% for data in enfants_avec_notes %}
-                <div class="card mb-4 bg-dark shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">{{ data.enfant.utilisateur.get_full_name }} - {{ data.enfant.classe_actuelle|default:"Non assigné" }}</h5>
-                        <p class="mb-0 small">
-                            Moyenne T1 : <strong>{{ data.moyenne_t1|floatformat:2 }}/20</strong>
-                        </p>
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">
+                    Bonjour, <strong>{{ user.role|title }}</strong> - {{ user.first_name }} {{ user.last_name }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-calendar me-1"></i> {{ annee_en_cours }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="#">2023-2024</a></li>
+                            <li><a class="dropdown-item" href="#">2024-2025</a></li>
+                            <li><a class="dropdown-item" href="#">2025-2026</a></li>
+                        </ul>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover mb-0">
-                                <thead class="table-secondary">
-                                    <tr>
-                                        <th>Matière</th>
-                                        <th>Devoir 1</th>
-                                        <th>Devoir 2</th>
-                                        <th>Devoir 3</th>
-                                        <th>Composition</th>
-                                        <th>Départ.</th>
-                                        <th>Moyenne</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for matiere_data in data.trimestre1_data.matieres %}
-                                    <tr class="align-middle">
-                                        <td class="fw-bold">{{ matiere_data.matiere.nom }}</td>
-                                        <td>
-                                            {% if matiere_data.devoir1 %}
-                                                <span class="badge {% if matiere_data.devoir1.valeur >= 15 %}bg-success{% elif matiere_data.devoir1.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                                                    {{ matiere_data.devoir1.valeur|floatformat:1 }}
-                                                </span>
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if matiere_data.devoir2 %}
-                                                <span class="badge {% if matiere_data.devoir2.valeur >= 15 %}bg-success{% elif matiere_data.devoir2.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                                                    {{ matiere_data.devoir2.valeur|floatformat:1 }}
-                                                </span>
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if matiere_data.devoir3 %}
-                                                <span class="badge {% if matiere_data.devoir3.valeur >= 15 %}bg-success{% elif matiere_data.devoir3.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                                                    {{ matiere_data.devoir3.valeur|floatformat:1 }}
-                                                </span>
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if matiere_data.composition %}
-                                                <span class="badge {% if matiere_data.composition.valeur >= 15 %}bg-success{% elif matiere_data.composition.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                                                    {{ matiere_data.composition.valeur|floatformat:1 }}
-                                                </span>
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if matiere_data.departemental %}
-                                                <span class="badge {% if matiere_data.departemental.valeur >= 15 %}bg-success{% elif matiere_data.departemental.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                                                    {{ matiere_data.departemental.valeur|floatformat:1 }}
-                                                </span>
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-primary fs-5">
-                                                {{ matiere_data.moyenne|floatformat:2 }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                    <tr class="table-secondary fw-bold">
-                                        <td colspan="6" class="text-end">MOYENNE GÉNÉRALE</td>
-                                        <td>
-                                            <span class="badge bg-info text-dark fs-5">
-                                                {{ data.moyenne_t1|floatformat:2 }}/20
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <button type="button" class="btn btn-sm btn-outline-light" id="printButton">
+                        <i class="fas fa-print me-1"></i> Imprimer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistiques globales -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_enfants }}</h5>
+                            <p class="card-text small">Enfants</p>
+                            <i class="fas fa-user-graduate fa-2x opacity-50 ms-auto"></i>
                         </div>
                     </div>
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="alert alert-info">
-                <i class="fas fa-user-graduate me-2"></i>
-                Aucun enfant n'est associé à votre compte. Veuillez contacter l'administration.
+                <div class="col-md-3">
+                    <div class="card text-white bg-success shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_absences }}</h5>
+                            <p class="card-text small">Absences</p>
+                            <i class="fas fa-calendar-times fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning text-dark shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">0</h5>
+                            <p class="card-text small">Retards</p>
+                            <i class="fas fa-clock fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">100%</h5>
+                            <p class="card-text small">Présence globale</p>
+                            <i class="fas fa-calendar-check fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-        {% endif %}
-    </main>
+
+            {% if enfants_avec_notes %}
+                {% for data in enfants_avec_notes %}
+                    <div class="card mb-4 bg-dark shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">{{ data.enfant.utilisateur.get_full_name }} - {{ data.classe|default:"Non assigné" }}</h5>
+                            <p class="mb-0 small">
+                                Moyenne T1 : <strong>{{ data.moyenne_t1|floatformat:2 }}/20</strong>
+                                {% if data.taux_presence %}
+                                    | Présence : <strong>{{ data.taux_presence }}%</strong>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover mb-0">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th>Matière</th>
+                                            <th>Devoir 1</th>
+                                            <th>Devoir 2</th>
+                                            <th>Devoir 3</th>
+                                            <th>Composition</th>
+                                            <th>Départ.</th>
+                                            <th>Moyenne</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for matiere_data in data.trimestre1_data.matieres %}
+                                        <tr class="align-middle">
+                                            <td class="fw-bold">{{ matiere_data.matiere.nom }}</td>
+                                            <td>
+                                                {% if matiere_data.devoir1 %}
+                                                    <span class="badge {% if matiere_data.devoir1.valeur >= 15 %}bg-success{% elif matiere_data.devoir1.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                        {{ matiere_data.devoir1.valeur|floatformat:1 }}
+                                                    </span>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if matiere_data.devoir2 %}
+                                                    <span class="badge {% if matiere_data.devoir2.valeur >= 15 %}bg-success{% elif matiere_data.devoir2.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                        {{ matiere_data.devoir2.valeur|floatformat:1 }}
+                                                    </span>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if matiere_data.devoir3 %}
+                                                    <span class="badge {% if matiere_data.devoir3.valeur >= 15 %}bg-success{% elif matiere_data.devoir3.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                        {{ matiere_data.devoir3.valeur|floatformat:1 }}
+                                                    </span>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if matiere_data.composition %}
+                                                    <span class="badge {% if matiere_data.composition.valeur >= 15 %}bg-success{% elif matiere_data.composition.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                        {{ matiere_data.composition.valeur|floatformat:1 }}
+                                                    </span>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if matiere_data.departemental %}
+                                                    <span class="badge {% if matiere_data.departemental.valeur >= 15 %}bg-success{% elif matiere_data.departemental.valeur >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                                        {{ matiere_data.departemental.valeur|floatformat:1 }}
+                                                    </span>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary fs-5">
+                                                    {{ matiere_data.moyenne|floatformat:2 }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr class="table-secondary fw-bold">
+                                            <td colspan="6" class="text-end">MOYENNE GÉNÉRALE</td>
+                                            <td>
+                                                <span class="badge bg-info text-dark fs-5">
+                                                    {{ data.moyenne_t1|floatformat:2 }}/20
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-user-graduate me-2"></i>
+                    Aucun enfant n'est associé à votre compte. Veuillez contacter l'administration.
+                </div>
+            {% endif %}
+        </main>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Active menu item
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Ferme la sidebar sur mobile après clic
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebarMenu');
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+    
+    // Gestion de l'impression
+    document.getElementById('printButton').addEventListener('click', function() {
+        window.print();
+    });
+</script>
 {% endblock %}

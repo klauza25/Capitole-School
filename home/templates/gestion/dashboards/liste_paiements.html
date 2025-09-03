@@ -1,0 +1,298 @@
+<!-- templates/gestion/paiements/liste_paiements.html -->
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Liste des paiements{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:paiement_dashboard' %}">Paiements</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Liste des paiements</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Paiements</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                            <i class="fas fa-wallet me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:enregistrer_paiement' %}">
+                            <i class="fas fa-plus me-2"></i> Enregistrer un paiement
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-file-invoice me-2"></i> Liste des paiements
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:caisse_dashboard' %}">
+                            <i class="fas fa-cash-register me-2"></i> Caisse
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">Liste des paiements</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    {% if user.role in 'secretaire,admin,directeur' %}
+                    <a href="{% url 'home:enregistrer_paiement' %}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-plus me-1"></i> Nouveau paiement
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Filtres -->
+            <div class="card bg-dark shadow mb-4">
+                <div class="card-header bg-gradient-primary d-flex align-items-center">
+                    <i class="fas fa-filter me-2"></i>
+                    <h5 class="mb-0">Filtrer les paiements</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="statut" class="form-label">Statut</label>
+                            <select name="statut" id="statut" class="form-select bg-dark text-white">
+                                <option value="">Tous les statuts</option>
+                                {% for status_code, status_label in STATUS_PAIEMENT_CHOICES %}
+                                <option value="{{ status_code }}" {% if filtre_statut == status_code %}selected{% endif %}>
+                                    {{ status_label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        {% if user.role in 'secretaire,admin,directeur' %}
+                        <div class="col-md-3">
+                            <label for="eleve" class="form-label">Élève</label>
+                            <select name="eleve" id="eleve" class="form-select bg-dark text-white">
+                                <option value="">Tous les élèves</option>
+                                {% for eleve in eleves %}
+                                <option value="{{ eleve.id }}" {% if filtre_eleve == eleve.id|slugify %}selected{% endif %}>
+                                    {{ eleve.utilisateur.get_full_name }} - {{ eleve.classe_actuelle }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="col-md-3">
+                            <label for="periode" class="form-label">Période</label>
+                            <select name="periode" id="periode" class="form-select bg-dark text-white">
+                                <option value="">Toute la période</option>
+                                <option value="today" {% if filtre_periode == "today" %}selected{% endif %}>Aujourd'hui</option>
+                                <option value="week" {% if filtre_periode == "week" %}selected{% endif %}>Cette semaine</option>
+                                <option value="month" {% if filtre_periode == "month" %}selected{% endif %}>Ce mois</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-filter me-1"></i> Appliquer les filtres
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Statistiques -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ stats.total }}</h5>
+                            <p class="card-text small">Total des paiements</p>
+                            <i class="fas fa-file-invoice-dollar fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ stats.payes }}</h5>
+                            <p class="card-text small">Paiements complets</p>
+                            <i class="fas fa-check-circle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning text-dark shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ stats.partiels }}</h5>
+                            <p class="card-text small">Paiements partiels</p>
+                            <i class="fas fa-exclamation-triangle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ stats.non_payes }}</h5>
+                            <p class="card-text small">Non payés</p>
+                            <i class="fas fa-times-circle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Liste des paiements -->
+            <div class="card bg-dark shadow">
+                <div class="card-header bg-gradient-success d-flex align-items-center">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>
+                    <h5 class="mb-0">Historique des paiements</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th><i class="fas fa-user me-1"></i> Élève</th>
+                                    <th><i class="fas fa-file-invoice me-1"></i> Frais</th>
+                                    <th><i class="fas fa-calendar me-1"></i> Date</th>
+                                    <th><i class="fas fa-money-bill-wave me-1"></i> Montant</th>
+                                    <th><i class="fas fa-wallet me-1"></i> Moyen</th>
+                                    <th><i class="fas fa-receipt me-1"></i> Référence</th>
+                                    <th><i class="fas fa-info-circle me-1"></i> Statut</th>
+                                    <th><i class="fas fa-cog me-1"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for paiement in paiements %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if paiement.eleve.utilisateur.photo %}
+                                                <img src="{{ paiement.eleve.utilisateur.photo.url }}" 
+                                                     class="rounded-circle me-2" 
+                                                     style="width: 30px; height: 30px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                                    {{ paiement.eleve.utilisateur.first_name|first|upper }}{{ paiement.eleve.utilisateur.last_name|first|upper }}
+                                                </div>
+                                            {% endif %}
+                                            {{ paiement.eleve.utilisateur.get_full_name }}
+                                        </div>
+                                    </td>
+                                    <td>{{ paiement.frais.description }}</td>
+                                    <td>{{ paiement.date_paiement|date:"d M Y" }}</td>
+                                    <td><strong>{{ paiement.montant_paye|floatformat:0 }} XAF</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ paiement.get_type_paiement_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ paiement.numero_transaction|default:"-" }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ paiement.status|lower|replace:' ':'-' }}">
+                                            {{ paiement.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{% url 'home:detail_paiement' paiement.id %}" 
+                                               class="btn btn-sm btn-outline-info"
+                                               title="Détails">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'home:generer_recu' paiement.id %}" 
+                                               class="btn btn-sm btn-outline-success" 
+                                               title="Télécharger le reçu"
+                                               target="_blank">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">
+                                        <i class="fas fa-file-invoice-dollar me-2"></i>
+                                        Aucun paiement enregistré
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if paiements.has_other_pages %}
+                    <div class="card-footer bg-dark d-flex justify-content-center">
+                        <ul class="pagination pagination-dark">
+                            {% if paiements.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% querystring page=paiements.previous_page_number %}">&laquo;</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                            {% endif %}
+                            
+                            {% for i in paiements.paginator.page_range %}
+                            {% if paiements.number == i %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ i }} <span class="sr-only">(current)</span></span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% querystring page=i %}">{{ i }}</a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+                            
+                            {% if paiements.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% querystring page=paiements.next_page_number %}">&raquo;</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Gestion des liens de la sidebar
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Ferme la sidebar sur mobile après clic
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebarMenu');
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+</script>
+{% endblock %}

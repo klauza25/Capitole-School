@@ -1,0 +1,92 @@
+<!-- templates/gestion/paiements/choisir_frais.html -->
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Choisir les frais{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:paiement_dashboard' %}">Paiements</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Choisir les frais</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Paiements</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                            <i class="fas fa-wallet me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-plus me-2"></i> Enregistrer un paiement
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:liste_paiements' %}">
+                            <i class="fas fa-file-invoice me-2"></i> Liste des paiements
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:caisse_dashboard' %}">
+                            <i class="fas fa-cash-register me-2"></i> Caisse
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">Choisir les frais</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{% url 'home:paiement_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Retour
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Liste des frais -->
+            <div class="row">
+                <div class="col-md-10 offset-md-1">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-primary d-flex align-items-center">
+                            <i class="fas fa-file-invoice me-2"></i>
+                            <h5 class="mb-0">Sélectionnez les frais à payer</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if frais_list %}
+                            <div class="list-group">
+                                {% for frais in frais_list %}
+                                <a href="{% url 'home:enregistrer_paiement_frais' frais.id %}" class="list-group-item list-group-item-action bg-dark border-secondary text-white d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ frais.description }}</h6>
+                                        <p class="mb-1 text-muted">{{ frais.niveau }} - {{ frais.montant }} XAF</p>
+                                        <small class="text-muted">Date limite: {{ frais.date_limite|date:"d M Y" }}</small>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">Sélectionner</span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                Aucun frais disponible.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

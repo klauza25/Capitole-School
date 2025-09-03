@@ -1,0 +1,736 @@
+<!-- templates/gestion/dashboards/paiement_dashboard.html -->
+{% extends "gestion/base.html" %}
+{% load static humanize %}
+{% block title %}Paiements - Capitole School{% endblock %}
+
+
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Paiements</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Factures</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Historique</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Paiements</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-wallet me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-file-invoice me-2"></i> Factures
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-history me-2"></i> Historique
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#">
+                            <i class="fas fa-cog me-2"></i> Paramètres
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">Gestion des paiements</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-calendar me-1"></i> {{ current_year }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="#">2023-2024</a></li>
+                            <li><a class="dropdown-item" href="#">2024-2025</a></li>
+                            <li><a class="dropdown-item" href="#">2025-2026</a></li>
+                        </ul>
+                    </div>
+                    {% if user.role in 'secretaire,admin,directeur' %}
+                    <button type="button" class="btn btn-sm " id="ajouterPaiementBtn">
+                      <!-- Dans templates/gestion/dashboards/paiement_dashboard.html -->
+                        <a href="{% url 'home:caisse' %}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-plus me-1"></i> Nouveau paiement
+                        </a>
+                    </button>
+                    <br>
+                    
+            <a href="{% url 'home:ajouter_frais' %}" class="btn btn-sm btn-outline-primary rounded--lg">
+                <i class="fas fa-plus me-1"></i> Ajouter des frais
+            </a>
+          
+                    {% endif %}
+                </div>
+            </div>
+
+            
+
+            <!-- Statistiques globales -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_a_payer|floatformat:0 }} XAF</h5>
+                            <p class="card-text small">Total à payer</p>
+                            <i class="fas fa-file-invoice-dollar fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_paye|floatformat:0 }} XAF</h5>
+                            <p class="card-text small">Total payé</p>
+                            <i class="fas fa-check-circle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning text-dark shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_a_payer }} XAF</h5>
+                            <p class="card-text small">Reste à payer</p>
+                            <i class="fas fa-exclamation-triangle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ taux_paiement }}%</h5>
+                            <p class="card-text small">Taux de paiement</p>
+                            <i class="fas fa-chart-bar fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sélecteur d'élève/enfant (pour les parents et admin) -->
+            {% if user.role == 'parent' and enfants %}
+                <div class="card mb-4 bg-dark shadow">
+                    <div class="card-header bg-gradient-primary d-flex align-items-center">
+                        <i class="fas fa-user-graduate me-2"></i>
+                        <h5 class="mb-0">Sélectionnez un enfant</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for enfant in enfants %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-dark border border-secondary h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center mb-3">
+                                            {% if enfant.utilisateur.photo %}
+                                                <img src="{{ enfant.utilisateur.photo.url }}" 
+                                                     class="rounded-circle me-3" 
+                                                     style="width: 40px; height: 40px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" 
+                                                     style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                                    {{ enfant.utilisateur.first_name|first|upper }}{{ enfant.utilisateur.last_name|first|upper }}
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <h6 class="mb-0 text-white">{{ enfant.utilisateur.get_full_name }}</h6>
+                                                <small class="text-muted">{{ enfant.classe_actuelle }}</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="badge bg-info">{{ enfant.niveau }}</span>
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    data-enfant-id="{{ enfant.id }}"
+                                                    onclick="selectEnfant({{ enfant.id }})">
+                                                <i class="fas fa-eye me-1"></i> Voir
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Liste des paiements -->
+            <div class="card bg-dark shadow">
+                <div class="card-header bg-gradient-success d-flex align-items-center">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>
+                    <h5 class="mb-0">Historique des paiements</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th><i class="fas fa-user me-1"></i> Élève</th>
+                                    <th><i class="fas fa-file-invoice me-1"></i> Frais</th>
+                                    <th><i class="fas fa-calendar me-1"></i> Date</th>
+                                    <th><i class="fas fa-money-bill-wave me-1"></i> Montant</th>
+                                    <th><i class="fas fa-wallet me-1"></i> Moyen</th>
+                                    <th><i class="fas fa-receipt me-1"></i> Référence</th>
+                                    <th><i class="fas fa-info-circle me-1"></i> Statut</th>
+                                    <th><i class="fas fa-cog me-1"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for paiement in paiements %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if paiement.eleve.utilisateur.photo %}
+                                                <img src="{{ paiement.eleve.utilisateur.photo.url }}" 
+                                                     class="rounded-circle me-2" 
+                                                     style="width: 30px; height: 30px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                                    {{ paiement.eleve.utilisateur.first_name|first|upper }}{{ paiement.eleve.utilisateur.last_name|first|upper }}
+                                                </div>
+                                            {% endif %}
+                                            {{ paiement.eleve.utilisateur.get_full_name }}
+                                        </div>
+                                    </td>
+                                    <td>{{ paiement.frais.description }}</td>
+                                    <td>{{ paiement.date|date:"d M Y" }}</td>
+                                    <td><strong>{{ paiement.montant|floatformat:0 }} XAF</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ paiement.get_moyen_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ paiement.reference|default:"-" }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ paiement.get_statut_couleur }}">
+                                            {{ paiement.get_statut_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-info" 
+                                                    title="Détails"
+                                                    onclick="showPaiementDetails({{ paiement.id }})">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <a href="{% url 'home:generer_recu' paiement.id %}" 
+                                               class="btn btn-sm btn-outline-success" 
+                                               title="Télécharger le reçu"
+                                               target="_blank">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            {% if user.role in 'secretaire,admin,directeur' %}
+                                            <button class="btn btn-sm btn-outline-warning" 
+                                                    title="Modifier"
+                                                    onclick="editPaiement({{ paiement.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">
+                                        <i class="fas fa-file-invoice-dollar me-2"></i>
+                                        Aucun paiement enregistré
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if paiements.has_other_pages %}
+                    <div class="card-footer bg-dark d-flex justify-content-center">
+                        <ul class="pagination pagination-dark">
+                            {% if paiements.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paiements.previous_page_number }}">&laquo;</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                            {% endif %}
+                            
+                            {% for i in paiements.paginator.page_range %}
+                            {% if paiements.number == i %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ i }} <span class="sr-only">(current)</span></span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+                            
+                            {% if paiements.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paiements.next_page_number }}">&raquo;</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Graphique des paiements -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-warning d-flex align-items-center">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            <h5 class="mb-0">Répartition des paiements</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="paiementsChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-info d-flex align-items-center">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            <h5 class="mb-0">Évolution des paiements</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="evolutionChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Espace pour tester le scroll -->
+            <div style="height: 400px;"></div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal Ajouter Paiement -->
+<div class="modal fade" id="ajouterPaiementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un paiement</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="ajouterPaiementForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="eleveSelect" class="form-label">Élève</label>
+                        <select class="form-select bg-dark text-white" id="eleveSelect" name="eleve_id" required>
+                            <option value="">Sélectionnez un élève</option>
+                            <!-- Les élèves seront chargés dynamiquement -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fraisSelect" class="form-label">Frais</label>
+                        <select class="form-select bg-dark text-white" id="fraisSelect" name="frais_id" required>
+                            <option value="">Sélectionnez les frais</option>
+                            <!-- Les frais seront chargés dynamiquement -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="montantInput" class="form-label">Montant (XAF)</label>
+                        <input type="number" class="form-control bg-dark text-white" id="montantInput" name="montant" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="moyenSelect" class="form-label">Moyen de paiement</label>
+                        <select class="form-select bg-dark text-white" id="moyenSelect" name="moyen" required>
+                            <option value="">Sélectionnez un moyen</option>
+                            <option value="ESPECE">Espèce</option>
+                            <option value="MOBILE_MONEY">Mobile Money</option>
+                            <option value="BANQUE">Virement bancaire</option>
+                            <option value="CHEQUE">Chèque</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="referenceInput" class="form-label">Référence</label>
+                        <input type="text" class="form-control bg-dark text-white" id="referenceInput" name="reference">
+                    </div>
+                    <div class="mb-3">
+                        <label for="commentaireInput" class="form-label">Commentaire</label>
+                        <textarea class="form-control bg-dark text-white" id="commentaireInput" name="commentaire" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="submitPaiementBtn">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails Paiement -->
+<div class="modal fade" id="paiementDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header">
+                <h5 class="modal-title">Détails du paiement</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="paiementDetailsContent">
+                <!-- Le contenu sera chargé dynamiquement -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Active menu item
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Ferme la sidebar sur mobile après clic
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebarMenu');
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+    
+    // Gestion de l'ajout de paiement
+    document.getElementById('ajouterPaiementBtn').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('ajouterPaiementModal'));
+        modal.show();
+        
+        // Charger les élèves
+        fetch('')
+            .then(response => response.json())
+            .then(data => {
+                const eleveSelect = document.getElementById('eleveSelect');
+                eleveSelect.innerHTML = '<option value="">Sélectionnez un élève</option>';
+                
+                data.forEach(eleve => {
+                    const option = document.createElement('option');
+                    option.value = eleve.id;
+                    option.textContent = `${eleve.nom} ${eleve.prenom} - ${eleve.classe}`;
+                    eleveSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des élèves:', error);
+                showError('Impossible de charger la liste des élèves');
+            });
+    });
+    
+    // Charger les frais en fonction de l'élève sélectionné
+    document.getElementById('eleveSelect').addEventListener('change', function() {
+        const eleveId = this.value;
+        const fraisSelect = document.getElementById('fraisSelect');
+        
+        if (!eleveId) {
+            fraisSelect.innerHTML = '<option value="">Sélectionnez les frais</option>';
+            return;
+        }
+        
+        fetch(`?eleve_id=${eleveId}`)
+            .then(response => response.json())
+            .then(data => {
+                fraisSelect.innerHTML = '<option value="">Sélectionnez les frais</option>';
+                
+                data.forEach(frais => {
+                    const option = document.createElement('option');
+                    option.value = frais.id;
+                    option.textContent = `${frais.description} - ${frais.montant} XAF (Échéance: ${frais.date_limite})`;
+                    fraisSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des frais:', error);
+                showError('Impossible de charger la liste des frais');
+            });
+    });
+    
+    // Soumettre le formulaire d'ajout de paiement
+    document.getElementById('submitPaiementBtn').addEventListener('click', function() {
+        const form = document.getElementById('ajouterPaiementForm');
+        const formData = new FormData(form);
+        
+        // Validation simple
+        if (!formData.get('eleve_id') || !formData.get('frais_id') || !formData.get('montant') || !formData.get('moyen')) {
+            showError('Veuillez remplir tous les champs requis');
+            return;
+        }
+        
+        // Désactiver le bouton pendant la requête
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...';
+        
+        // Envoyer la requête
+        fetch('', {
+            method: 'POST',
+            body: new URLSearchParams(formData),
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Fermer le modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('ajouterPaiementModal'));
+                modal.hide();
+                
+                // Afficher un message de succès
+                showSuccess(data.message);
+                
+                // Recharger la page pour voir les changements
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                throw new Error(data.error || 'Erreur lors de l\'enregistrement');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError(error.message || 'Erreur lors de l\'enregistrement du paiement');
+            
+            // Réactiver le bouton
+            document.getElementById('submitPaiementBtn').disabled = false;
+            document.getElementById('submitPaiementBtn').textContent = 'Enregistrer';
+        });
+    });
+    
+    // Afficher les détails d'un paiement
+    function showPaiementDetails(paiementId) {
+        fetch(`?id=${paiementId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const content = `
+                        <div class="mb-3">
+                            <h6 class="text-white">Élève</h6>
+                            <p class="text-muted mb-1">${data.eleve_nom}</p>
+                            <p class="text-muted">${data.classe}</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-white">Frais</h6>
+                            <p class="text-muted">${data.frais_description} - ${data.frais_montant} XAF</p>
+                            <p class="text-muted">Échéance: ${data.frais_date_limite}</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-white">Détails du paiement</h6>
+                            <p class="text-muted mb-1"><strong>Date:</strong> ${data.date}</p>
+                            <p class="text-muted mb-1"><strong>Montant:</strong> ${data.montant} XAF</p>
+                            <p class="text-muted mb-1"><strong>Moyen:</strong> ${data.moyen}</p>
+                            <p class="text-muted mb-1"><strong>Référence:</strong> ${data.reference || '-'}</p>
+                            <p class="text-muted"><strong>Statut:</strong> <span class="badge bg-${data.statut_couleur}">${data.statut}</span></p>
+                        </div>
+                        ${data.commentaire ? `
+                        <div class="mb-3">
+                            <h6 class="text-white">Commentaire</h6>
+                            <p class="text-muted">${data.commentaire}</p>
+                        </div>` : ''}
+                    `;
+                    
+                    document.getElementById('paiementDetailsContent').innerHTML = content;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('paiementDetailsModal'));
+                    modal.show();
+                } else {
+                    showError(data.error || 'Impossible de charger les détails du paiement');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showError('Erreur lors du chargement des détails du paiement');
+            });
+    }
+    
+    // Fonction pour sélectionner un enfant (pour les parents)
+    function selectEnfant(enfantId) {
+        // Ici vous redirigeriez vers la page des paiements de cet enfant
+        // Pour cet exemple, nous allons juste afficher un message
+        showInfo(`Affichage des paiements pour l'enfant ID: ${enfantId}`);
+    }
+    
+    // Initialiser les graphiques
+    document.addEventListener('DOMContentLoaded', function() {
+        // Graphique des paiements
+        const paiementsCtx = document.getElementById('paiementsChart').getContext('2d');
+        const paiementsChart = new Chart(paiementsCtx, {
+            type: 'pie',
+             {
+                labels: ['Payés', 'Partiellement payés', 'En attente'],
+                datasets: [{
+                    data: [{{ taux_paiement }}],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.7)',
+                        'rgba(255, 193, 7, 0.7)',
+                        'rgba(220, 53, 69, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(220, 53, 69, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: 'white'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Graphique d'évolution
+        const evolutionCtx = document.getElementById('evolutionChart').getContext('2d');
+        const evolutionChart = new Chart(evolutionCtx, {
+            type: 'line',
+             {
+                labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
+                datasets: [{
+                    label: 'Paiements',
+                    data: [1200000, 1500000, 1800000, 1700000, 2000000, 2200000, 2100000, 2300000, 2500000, 2700000, 2900000, 3200000],
+                    borderColor: 'rgba(102, 204, 0, 1)',
+                    backgroundColor: 'rgba(102, 204, 0, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'white'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'white'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'white'
+                        }
+                    }
+                }
+            }
+        });
+    });
+    
+    // Fonctions utilitaires
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showSuccess(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 3000);
+    }
+    
+    function showError(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 5000);
+    }
+    
+    function showInfo(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-info alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 3000);
+    }
+</script>
+{% endblock %}

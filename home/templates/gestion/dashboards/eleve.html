@@ -108,18 +108,81 @@
                     </div>
 
                     <!-- Bouton pour changer la photo -->
-                    <div class="mt-3 pt-3 border-top border-secondary">
-                        <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('photoUpload').click()">
-                            📷 Changer la photo
-                        </button>
-                        <form id="photoForm" method="post" enctype="multipart/form-data" style="display: none;">
-                            {% csrf_token %}
-                            <input type="file"
-                                   id="photoUpload"
-                                   name="photo"
-                                   accept="image/*"
-                                   onchange="this.form.submit()">
-                        </form>
+                   <!-- Dans le bloc Profil rapide -->
+<div class="mt-3 pt-3 border-top border-secondary">
+    <div class="d-flex align-items-center">
+        <button class="btn btn-sm btn-outline-light me-2" id="changePhotoBtn">
+            📷 Changer la photo
+        </button>
+        <button class="btn btn-sm btn-outline-success" id="savePhotoBtn" style="display: none;">
+            <i class="fas fa-save me-1"></i> Enregistrer
+        </button>
+    </div>
+    <form id="photoForm" method="post" enctype="multipart/form-data" style="display: none;">
+        {% csrf_token %}
+        <input type="file"
+               id="photoUpload"
+               name="photo"
+               accept="image/*">
+    </form>
+</div>
+
+            <!-- Pointage de présence -->
+            <div class="card mb-4 bg-dark shadow">
+                <div class="card-header bg-gradient-success d-flex align-items-center">
+                    <i class="fas fa-calendar-check me-2"></i>
+                    <h5 class="mb-0">Pointage de présence</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-white mb-3">Pointez votre présence pour aujourd'hui</h6>
+                            
+                            {% if peut_pointer %}
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-success btn-lg w-100" id="pointerPresenceBtn">
+                                        <i class="fas fa-check-circle me-2"></i> Pointer ma présence
+                                    </button>
+                                </div>
+                                <p class="text-muted">Cliquez sur le bouton ci-dessus pour pointer votre présence pour la journée du {{ today|date:"d M Y" }}</p>
+                            {% else %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    {% if deja_pointe %}
+                                        Vous avez déjà pointé votre présence pour aujourd'hui.
+                                    {% else %}
+                                        Le pointage de présence n'est pas disponible pour aujourd'hui.
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-white mb-3">Statut de votre présence</h6>
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-calendar-day me-3 fs-4 text-primary"></i>
+                                <div>
+                                    <p class="mb-0 text-white">Aujourd'hui ({{ today|date:"d M Y" }})</p>
+                                    <p class="mb-0 {% if presence_aujourdhui %}text-success{% else %}text-danger{% endif %}">
+                                        {% if presence_aujourdhui %}
+                                            <i class="fas fa-check-circle me-1"></i> Présent
+                                        {% else %}
+                                            <i class="fas fa-times-circle me-1"></i> Non pointé
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-history me-3 fs-4 text-info"></i>
+                                <div>
+                                    <p class="mb-0 text-white">Taux de présence</p>
+                                    <p class="mb-0 text-info">
+                                        <i class="fas fa-chart-bar me-1"></i> {{ taux_presence }}%
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -156,7 +219,7 @@
                 <div class="col-md-3">
                     <div class="card text-white bg-info shadow-sm">
                         <div class="card-body">
-                            <h5 class="card-title">1</h5>
+                            <h5 class="card-title">{{ retards_count }}</h5>
                             <p class="card-text small">Retard</p>
                             <i class="fas fa-clock fa-2x opacity-50 ms-auto"></i>
                         </div>
@@ -349,21 +412,228 @@
         window.print();
     });
     
-    // Script pour prévisualiser l'image après sélection
-    document.getElementById('photoUpload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                // Met à jour l'image affichée
-                const currentPhoto = document.getElementById('currentPhoto');
-                if (currentPhoto.tagName === 'IMG') {
-                    currentPhoto.src = e.target.result;
-                } else {
-                    currentPhoto.innerHTML = '<img src="' + e.target.result + '" style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;">';
+   // Script pour gérer le téléchargement de la photo de profil
+document.getElementById('changePhotoBtn').addEventListener('click', function() {
+    document.getElementById('photoUpload').click();
+});
+
+document.getElementById('photoUpload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Afficher le bouton d'enregistrement
+        document.getElementById('savePhotoBtn').style.display = 'inline-block';
+        
+        // Vérifier que le fichier est une image
+        const validImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!validImageTypes.includes(file.type)) {
+            alert('Veuillez sélectionner une image valide (JPEG, PNG ou GIF)');
+            this.value = '';
+            return;
+        }
+        
+        // Vérifier la taille du fichier (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('L\'image ne doit pas dépasser 5MB');
+            this.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Met à jour l'image affichée
+            const currentPhoto = document.getElementById('currentPhoto');
+            if (currentPhoto.tagName === 'IMG') {
+                currentPhoto.src = e.target.result;
+            } else {
+                currentPhoto.innerHTML = '<img src="' + e.target.result + '" style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;">';
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Gestion de l'enregistrement de la photo
+document.getElementById('savePhotoBtn').addEventListener('click', function() {
+    const fileInput = document.getElementById('photoUpload');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Veuillez sélectionner une image avant d\'enregistrer');
+        return;
+    }
+    
+    // Créer un formulaire de données
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    // Désactiver le bouton pendant la requête
+    const saveBtn = document.getElementById('savePhotoBtn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...';
+    
+    // Envoyer la requête AJAX vers la même URL
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Afficher une notification de succès
+            const successAlert = document.createElement('div');
+            successAlert.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+            successAlert.style.maxWidth = '300px';
+            successAlert.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i> Photo de profil mise à jour !
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.appendChild(successAlert);
+            
+            // Supprimer la notification après 3 secondes
+            setTimeout(() => {
+                if (successAlert.parentNode) {
+                    successAlert.parentNode.removeChild(successAlert);
                 }
-            };
-            reader.readAsDataURL(file);
+            }, 3000);
+            
+            // Réinitialiser le formulaire
+            fileInput.value = '';
+            saveBtn.style.display = 'none';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Enregistrer';
+        } else {
+            throw new Error(data.error || 'Erreur lors de l\'enregistrement');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        
+        // Réactiver le bouton
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Enregistrer';
+        
+        // Afficher une notification d'erreur
+        const errorAlert = document.createElement('div');
+        errorAlert.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        errorAlert.style.maxWidth = '300px';
+        errorAlert.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i> ${error.message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(errorAlert);
+        
+        // Supprimer la notification après 5 secondes
+        setTimeout(() => {
+            if (errorAlert.parentNode) {
+                errorAlert.parentNode.removeChild(errorAlert);
+            }
+        }, 5000);
+    });
+});
+    // Gestion du pointage de présence
+    document.addEventListener('DOMContentLoaded', function() {
+        const pointerBtn = document.getElementById('pointerPresenceBtn');
+        if (pointerBtn) {
+            pointerBtn.addEventListener('click', function() {
+                // Désactiver le bouton pendant la requête
+                pointerBtn.disabled = true;
+                pointerBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Enregistrement...';
+                
+                // Envoyer la requête AJAX
+                fetch('{% url "home:pointer_presence" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        date: new Date().toISOString().split('T')[0]
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Mettre à jour l'interface utilisateur
+                        pointerBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Présence pointée !';
+                        pointerBtn.classList.remove('btn-success');
+                        pointerBtn.classList.add('btn-secondary');
+                        pointerBtn.disabled = true;
+                        
+                        // Mettre à jour le statut de présence
+                        const presenceStatus = document.querySelector('.card-body .text-success, .card-body .text-danger');
+                        if (presenceStatus) {
+                            presenceStatus.innerHTML = '<i class="fas fa-check-circle me-1"></i> Présent';
+                            presenceStatus.classList.remove('text-danger');
+                            presenceStatus.classList.add('text-success');
+                        }
+                        
+                        // Afficher une notification de succès
+                        const successAlert = document.createElement('div');
+                        successAlert.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+                        successAlert.style.maxWidth = '300px';
+                        successAlert.innerHTML = `
+                            <i class="fas fa-check-circle me-2"></i> Présence enregistrée avec succès !
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        document.body.appendChild(successAlert);
+                        
+                        // Supprimer la notification après 5 secondes
+                        setTimeout(() => {
+                            if (successAlert.parentNode) {
+                                successAlert.parentNode.removeChild(successAlert);
+                            }
+                        }, 5000);
+                    } else {
+                        throw new Error(data.error || 'Erreur inconnue');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    
+                    // Réactiver le bouton
+                    pointerBtn.disabled = false;
+                    pointerBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Pointer ma présence';
+                    
+                    // Afficher une notification d'erreur
+                    const errorAlert = document.createElement('div');
+                    errorAlert.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+                    errorAlert.style.maxWidth = '300px';
+                    errorAlert.innerHTML = `
+                        <i class="fas fa-exclamation-circle me-2"></i> ${error.message || 'Erreur lors de l\'enregistrement'}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.body.appendChild(errorAlert);
+                    
+                    // Supprimer la notification après 5 secondes
+                    setTimeout(() => {
+                        if (errorAlert.parentNode) {
+                            errorAlert.parentNode.removeChild(errorAlert);
+                        }
+                    }, 5000);
+                });
+            });
+        }
+        
+        // Fonction pour récupérer le token CSRF
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
     });
 </script>

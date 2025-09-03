@@ -1,0 +1,276 @@
+<!-- templates/gestion/messagerie/liste.html -->
+{% extends "gestion/base.html" %}
+{% load static humanize %}
+{% block title %}Messagerie - Capitole School{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Messagerie</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:notifications' %}">Notifications</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Messagerie</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link {% if boite == 'inbox' %}active text-white{% endif %}" href="{% url 'home:messagerie' %}">
+                            <i class="fas fa-inbox me-2"></i> Boîte de réception
+                            {% if total_non_lus > 0 %}
+                                <span class="badge bg-primary float-end">{{ total_non_lus }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if boite == 'sent' %}active text-white{% endif %}" href="{% url 'home:messagerie' %}?boite=sent">
+                            <i class="fas fa-paper-plane me-2"></i> Messages envoyés
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:messagerie_nouveau' %}">
+                            <i class="fas fa-edit me-2"></i> Nouveau message
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">
+                    {% if boite == 'inbox' %}Boîte de réception{% else %}Messages envoyés{% endif %}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="input-group me-2" style="max-width: 300px;">
+                        <input type="text" class="form-control bg-dark text-white border-secondary" 
+                               placeholder="Rechercher..." id="searchInput" value="{{ recherche }}">
+                        <button class="btn btn-outline-light" type="button" id="searchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <a href="{% url 'home:messagerie_nouveau' %}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-plus me-1"></i> Nouveau message
+                    </a>
+                </div>
+            </div>
+
+            <!-- Liste des messages -->
+            {% if messages %}
+                <div class="list-group mb-4">
+                    {% for message in messages %}
+                    <a href="{% url 'home:messagerie_detail' message.id %}" 
+                       class="list-group-item list-group-item-action bg-dark border-secondary d-flex justify-content-between align-items-center {% if boite == 'inbox' and not message.lu %}text-white bg-primary{% else %}text-white{% endif %}">
+                        <div>
+                            <h6 class="mb-1">
+                                {% if boite == 'inbox' %}
+                                    {{ message.expediteur.get_full_name }}
+                                {% else %}
+                                    {{ message.destinataire.get_full_name }}
+                                {% endif %}
+                                {% if boite == 'inbox' and not message.lu %}
+                                    <span class="badge bg-light text-dark ms-2">Nouveau</span>
+                                {% endif %}
+                            </h6>
+                            <p class="mb-1">{{ message.objet }}</p>
+                            <small class="text-muted">
+                                <i class="far fa-clock me-1"></i> 
+                                {{ message.date_envoi|naturaltime }}
+                            </small>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="dropdownMenu{{ message.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenu{{ message.id }}">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'home:messagerie_detail' message.id %}">
+                                        <i class="fas fa-eye me-2"></i> Voir
+                                    </a>
+                                </li>
+                                {% if boite == 'inbox' %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'home:messagerie_repondre' message.id %}">
+                                        <i class="fas fa-reply me-2"></i> Répondre
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="#" onclick="supprimerMessage({{ message.id }}, '{% if boite == 'inbox' %}destinataire{% else %}expediteur{% endif %}')">
+                                        <i class="fas fa-trash me-2"></i> Supprimer
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if messages.has_other_pages %}
+                <nav aria-label="Pagination messages">
+                    <ul class="pagination pagination-dark justify-content-center">
+                        {% if messages.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ messages.previous_page_number }}{% if boite %}&boite={{ boite }}{% endif %}{% if recherche %}&q={{ recherche }}{% endif %}">&laquo;</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&laquo;</span>
+                        </li>
+                        {% endif %}
+                        
+                        {% for i in messages.paginator.page_range %}
+                        {% if messages.number == i %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ i }} <span class="sr-only">(current)</span></span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% if boite %}&boite={{ boite }}{% endif %}{% if recherche %}&q={{ recherche }}{% endif %}">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if messages.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ messages.next_page_number }}{% if boite %}&boite={{ boite }}{% endif %}{% if recherche %}&q={{ recherche }}{% endif %}">&raquo;</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&raquo;</span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-envelope-open-text me-2"></i>
+                    {% if boite == 'inbox' %}
+                        Aucun message dans votre boîte de réception.
+                    {% else %}
+                        Aucun message envoyé.
+                    {% endif %}
+                </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Gestion de la recherche
+    document.getElementById('searchButton').addEventListener('click', function() {
+        const recherche = document.getElementById('searchInput').value.trim();
+        let url = "{% url 'home:messagerie' %}";
+        
+        if (recherche) {
+            url += "?q=" + encodeURIComponent(recherche);
+        }
+        
+        {% if boite == 'sent' %}
+        url += (url.includes('?') ? '&' : '?') + "boite=sent";
+        {% endif %}
+        
+        window.location.href = url;
+    });
+    
+    // Recherche au pression de la touche Entrée
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('searchButton').click();
+        }
+    });
+    
+    // Supprimer un message
+    function supprimerMessage(messageId, type) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer ce message ?')) {
+            fetch('{% url 'home:messagerie_supprimer' %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ 
+                    id: messageId,
+                    type: type
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(data.message || 'Message supprimé avec succès');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showError(data.error || 'Erreur lors de la suppression du message');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showError('Erreur de communication avec le serveur');
+            });
+        }
+    }
+    
+    // Fonctions utilitaires
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showSuccess(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 3000);
+    }
+    
+    function showError(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

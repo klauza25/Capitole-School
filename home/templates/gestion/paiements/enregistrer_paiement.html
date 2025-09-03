@@ -1,0 +1,259 @@
+<!-- templates/gestion/paiements/enregistrer_paiement.html -->
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:paiement_dashboard' %}">Paiements</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Ajouter un paiement</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Paiements</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                            <i class="fas fa-wallet me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-plus me-2"></i> Ajouter un paiement
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:liste_paiements' %}">
+                            <i class="fas fa-file-invoice me-2"></i> Liste des paiements
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:caisse_dashboard' %}">
+                            <i class="fas fa-cash-register me-2"></i> Caisse
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">{{ title }}</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{% url 'home:paiement_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Retour
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Formulaire d'ajout de paiement -->
+            <div class="row">
+                <div class="col-md-8 offset-md-2">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-success d-flex align-items-center">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>
+                            <h5 class="mb-0">Informations du paiement</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" class="needs-validation" novalidate>
+                                {% csrf_token %}
+                                
+                                {% if eleve %}
+                                <div class="alert alert-info mb-4">
+                                    <i class="fas fa-user-graduate me-2"></i>
+                                    <strong>Élève sélectionné:</strong> {{ eleve.utilisateur.get_full_name }} - {{ eleve.classe_actuelle }}
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Affichage du montant restant (calculé côté serveur) -->
+                                {% if montant_restant is not None %}
+                                <div class="alert {% if montant_restant <= 0 %}alert-success{% else %}alert-warning{% endif %} mb-4">
+                                    <i class="fas {% if montant_restant <= 0 %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %} me-2"></i>
+                                    <strong>Montant restant:</strong> {{ montant_restant|floatformat:0 }} XAF
+                                    {% if montant_restant <= 0 %}
+                                    <span class="badge bg-success ms-2">Complètement payé</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.eleve.id_for_label }}" class="form-label">
+                                        {{ form.eleve.label }}
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-user"></i>
+                                        </span>
+                                        {{ form.eleve }}
+                                    </div>
+                                    {% if form.eleve.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.eleve.errors|first }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.frais.id_for_label }}" class="form-label">
+                                        {{ form.frais.label }}
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </span>
+                                        {{ form.frais }}
+                                    </div>
+                                    {% if form.frais.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.frais.errors|first }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.montant_paye.id_for_label }}" class="form-label">
+                                            {{ form.montant_paye.label }}
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">XAF</span>
+                                            {{ form.montant_paye }}
+                                            <span class="input-group-text">.00</span>
+                                        </div>
+                                        {% if form.montant_paye.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.montant_paye.errors|first }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.type_paiement.id_for_label }}" class="form-label">
+                                            {{ form.type_paiement.label }}
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-credit-card"></i>
+                                            </span>
+                                            {{ form.type_paiement }}
+                                        </div>
+                                        {% if form.type_paiement.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.type_paiement.errors|first }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.numero_transaction.id_for_label }}" class="form-label">
+                                            {{ form.numero_transaction.label }}
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-barcode"></i>
+                                            </span>
+                                            {{ form.numero_transaction }}
+                                        </div>
+                                        {% if form.numero_transaction.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.numero_transaction.errors|first }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.date_paiement.id_for_label }}" class="form-label">
+                                            {{ form.date_paiement.label }}
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-calendar"></i>
+                                            </span>
+                                            {{ form.date_paiement }}
+                                        </div>
+                                        {% if form.date_paiement.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_paiement.errors|first }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        {{ form.notes.label }}
+                                    </label>
+                                    {{ form.notes }}
+                                    {% if form.notes.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.notes.errors|first }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{% url 'home:paiement_dashboard' %}" class="btn btn-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i> Annuler
+                                    </a>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save me-1"></i> Enregistrer le paiement
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialisation des formulaires Bootstrap
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            // Fetch all the forms we want to apply custom Bootstrap validation styles to
+            var forms = document.getElementsByClassName('needs-validation');
+            
+            // Loop over them and prevent submission
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+    
+    // Gestion de la mise à jour de la page lors du changement d'élève
+    document.getElementById('{{ form.eleve.id_for_label }}').addEventListener('change', function() {
+        const eleveId = this.value;
+        if (eleveId) {
+            // Soumettre le formulaire pour recharger la page avec le nouvel élève
+            const form = document.querySelector('form');
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'eleve_id';
+            hiddenInput.value = eleveId;
+            form.appendChild(hiddenInput);
+            form.submit();
+        }
+    });
+</script>
+{% endblock %}

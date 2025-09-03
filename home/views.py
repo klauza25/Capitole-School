@@ -14,8 +14,8 @@ from decimal import Decimal
 import logging
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import Eleve, Enseignement, Classe, Frais, Matiere, Note, Notification, Paiement, Parent, Presence, Utilisateur, Eleve, Classe
-from .forms import EnseignantForm, ParentForm, RegisterForm, CycleForm, NiveauForm, ClasseForm, EleveForm
+from .models import STATUS_PAIEMENT_CHOICES, Eleve, Enseignement, Classe, Frais, Matiere, Note, Notification, Paiement, Parent, Presence, Transaction, Utilisateur, Eleve, Classe
+from .forms import EnseignantForm, FraisForm, PaiementForm, ParentForm, RegisterForm, CycleForm, NiveauForm, ClasseForm, EleveForm
 from django.contrib import messages
 # home/views.py
 from django.shortcuts import render, get_object_or_404, redirect
@@ -30,6 +30,12 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Avg, Q
 from datetime import date, timedelta
 from decimal import Decimal
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect
+from django.utils import timezone
+from .models import Presence, Eleve
+
 
 @login_required
 def directeur_dashboard(request):
@@ -431,6 +437,39 @@ def eleve_dashboard(request):
         messages.error(request, "Profil élève introuvable.")
         return redirect('home:login')
 
+
+
+    # Gestion de l'upload de photo
+    if request.method == 'POST' and request.FILES.get('photo'):
+        photo = request.FILES['photo']
+        
+        # Validation du type de fichier
+        valid_image_types = ['image/jpeg', 'image/png', 'image/gif']
+        if photo.content_type not in valid_image_types:
+            return JsonResponse({
+                'success': False,
+                'error': 'Format d\'image invalide. Formats acceptés: JPEG, PNG, GIF'
+            }, status=400)
+        
+        # Validation de la taille (max 5MB)
+        if photo.size > 5 * 1024 * 1024:
+            return JsonResponse({
+                'success': False,
+                'error': 'L\'image ne doit pas dépasser 5MB'
+            }, status=400)
+        
+        # Mettre à jour la photo de profil depuis le modèle Utilisateur
+        request.user.photo = photo
+        request.user.save()
+        
+        return JsonResponse({
+            'success': True,
+            'photo_url': request.user.photo.url
+        })
+
+    # ... le reste de votre code existant pour le dashboard ...
+    
+    # Si ce n'est pas une requête AJAX pour la photo
     # Notes triées par trimestre
     notes = eleve.notes.all().select_related('matiere').order_by('trimestre', 'matiere__nom')
     
@@ -510,6 +549,15 @@ def eleve_dashboard(request):
 
     # Récupérer les présences récentes
     presences = eleve.presence_set.all().order_by('-date')[:10]
+    
+    # Ajouter ces variables au contexte
+    today = timezone.now().date()
+    eleve = request.user.eleve_profile
+    
+    # Vérifier si l'élève peut pointer sa présence aujourd'hui
+    peut_pointer = not Presence.objects.filter(eleve=eleve, date=today).exists()
+    deja_pointe = not peut_pointer
+    presence_aujourdhui = Presence.objects.filter(eleve=eleve, date=today, present=True).exists()
 
     context = {
         'eleve': eleve,
@@ -518,6 +566,11 @@ def eleve_dashboard(request):
         'absences_count': absences_count,
         'presences': presences,
         'notes': notes,
+        'peut_pointer': peut_pointer,
+        'deja_pointe': deja_pointe,
+        'presence_aujourdhui': presence_aujourdhui,
+        'today': today,
+        
     }
 
     return render(request, 'gestion/dashboards/eleve.html', context)
@@ -577,9 +630,7 @@ def enseignant_dashboard(request):
 
 
 
-@login_required
-def secretaire_dashboard(request):
-    return render(request, 'gestion/dashboards/secretaire.html')
+
 
 @login_required
 def surveillant_dashboard(request):
@@ -898,7 +949,6 @@ def ajouter_parent(request):
         form = ParentForm()
     return render(request, 'gestion/dashboards/parent_ajouter.html', {'form': form})
 
-# views.py
 
 # home/views.py
 @login_required
@@ -911,6 +961,12 @@ def parent_dashboard(request):
 
     enfants = parent.enfants.all().prefetch_related('notes__matiere', 'classe_actuelle__niveau')
     enfants_avec_notes = []
+
+    # Statistiques globales
+    mois_en_cours = date.today().month
+    annee_en_cours = date.today().year
+    total_absences = 0
+    total_retards = 0
 
     for enfant in enfants:
         # Organiser les notes par trimestre
@@ -981,23 +1037,90 @@ def parent_dashboard(request):
                 'moyenne': moyenne_generale
             }
         
+        # CORRECTION ICI : Utiliser le bon nom pour accéder aux présences
+        # Si vous avez défini related_name='presences' dans le modèle Presence
+        # Sinon, utilisez le nom approprié
+        try:
+            # Essayer avec différentes possibilités
+            if hasattr(enfant, 'presences'):
+                presences = enfant.presences
+            elif hasattr(enfant, 'presence'):
+                presences = enfant.presence
+            else:
+                # Si rien ne fonctionne, utilisez presence_set
+                presences = enfant.presence_set
+            
+            # Calculer les absences
+            absences_enfant = presences.filter(
+                present=False,
+                date__year=annee_en_cours,
+                date__month=mois_en_cours
+            ).count()
+            
+            # Calculer les retards - seulement si le champ retard existe
+            try:
+                retards_enfant = presences.filter(
+                    retard=True,
+                    date__year=annee_en_cours,
+                    date__month=mois_en_cours
+                ).count()
+            except FieldError:
+                retards_enfant = 0
+            
+            total_absences += absences_enfant
+            total_retards += retards_enfant
+            
+            # Calculer le taux de présence
+            total_presences = presences.count()
+            presences_valides = presences.filter(present=True).count()
+            taux_presence = round(presences_valides / total_presences * 100, 1) if total_presences > 0 else 100
+            
+        except Exception as e:
+            # En cas d'erreur, utiliser des valeurs par défaut
+            absences_enfant = 0
+            retards_enfant = 0
+            taux_presence = 100
+            logger.error(f"Erreur lors de la récupération des présences pour {enfant}: {str(e)}")
+
         enfants_avec_notes.append({
             'enfant': enfant,
             'trimestre1_data': trimestres_data.get('T1', {
                 'matieres': [],
                 'moyenne': 0.0
             }),
+            'trimestre2_data': trimestres_data.get('T2', {
+                'matieres': [],
+                'moyenne': 0.0
+            }),
+            'trimestre3_data': trimestres_data.get('T3', {
+                'matieres': [],
+                'moyenne': 0.0
+            }),
             'moyenne_t1': trimestres_data.get('T1', {}).get('moyenne', 0.0),
             'moyenne_t2': trimestres_data.get('T2', {}).get('moyenne', 0.0),
             'moyenne_t3': trimestres_data.get('T3', {}).get('moyenne', 0.0),
+            'absences': absences_enfant,
+            'retards': retards_enfant,
+            'taux_presence': taux_presence,
+            'classe': enfant.classe_actuelle,
+            'niveau': enfant.classe_actuelle.niveau if enfant.classe_actuelle else None
         })
 
     context = {
         'parent': parent,
         'enfants_avec_notes': enfants_avec_notes,
+        'total_enfants': enfants.count(),
+        'total_absences': total_absences,
+        'total_retards': total_retards,
+        'mois_en_cours': mois_en_cours,
+        'annee_en_cours': annee_en_cours,
     }
 
     return render(request, 'gestion/dashboards/parent_dashboard.html', context)
+
+
+
+
 
 
 @login_required
@@ -1052,15 +1175,14 @@ def supprimer_parent(request, pk):
         'enfants': enfants
     })
 
-
 @login_required
 def secretaire_dashboard(request):
     # Vérifier que l'utilisateur est bien un secrétaire
-    if request.user.role != 'secretaire':
-        messages.error(request, "Accès refusé : vous n'êtes pas secrétaire.")
-        return redirect('home:login')
+    if request.user.role not in ['secretaire', 'admin', 'directeur']:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à accéder à cette page.")
+        return redirect('home:home')
     
-     # Statistiques globales
+    # Statistiques globales
     total_eleves = Eleve.objects.count()
     total_classes = Classe.objects.count()
     total_niveaux = Niveau.objects.count()
@@ -1070,18 +1192,14 @@ def secretaire_dashboard(request):
     presences_valides = Presence.objects.filter(present=True).count()
     taux_presence_global = round(presences_valides / total_presences * 100, 1) if total_presences > 0 else 100
     
-    # CORRECTION ICI : Remplacer 'statut' par la logique appropriée
-    # Option 1 : Si vous n'avez pas de champ statut, peut-être que vous souhaitez compter les élèves sans classe
-# home/views.py
-    eleves_en_attente = Eleve.objects.filter(statut='EN_ATTENTE').count()    
     # Élèves récemment inscrits
     eleves_recents = Eleve.objects.filter(
         utilisateur__date_joined__gte=date.today() - timedelta(days=30)
     ).order_by('-utilisateur__date_joined')[:5]
     
-    
-    # Élèves en attente d'inscription
-    eleves_en_attente = Eleve.objects.filter(statut='EN_ATTENTE').count()
+    # CORRECTION : Utiliser une logique appropriée pour les élèves en attente
+    # Si le modèle Eleve n'a pas de champ statut, on considère qu'un élève est en attente s'il n'a pas de classe
+    eleves_en_attente = Eleve.objects.filter(classe_actuelle__isnull=True).count()
     
     # Statistiques financières
     annee_en_cours = date.today().year
@@ -1090,12 +1208,14 @@ def secretaire_dashboard(request):
     # Total des frais scolaires pour l'année
     total_frais = Frais.objects.filter(
         Q(date_limite__year=annee_en_cours)
-    ).aggregate(total=Sum('montant'))['total'] or 0
+    ).aggregate(total=Sum('montant'))['total'] or Decimal('0.00')
     
+    # CORRECTION PRINCIPALE : Utiliser date_paiement au lieu de date et montant_paye au lieu de montant
     # Total des paiements validés
     total_paiements = Paiement.objects.filter(
-        date__year=annee_en_cours
-    ).aggregate(total=Sum('montant'))['total'] or 0
+        date_paiement__year=annee_en_cours,
+        status='Payé'
+    ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
     
     # Taux de paiement global
     taux_paiement = round(total_paiements / total_frais * 100, 1) if total_frais > 0 else 100
@@ -1112,12 +1232,14 @@ def secretaire_dashboard(request):
             total_frais_classe = Frais.objects.filter(
                 niveau=classe.niveau,
                 date_limite__year=annee_en_cours
-            ).aggregate(total=Sum('montant'))['total'] or 0
+            ).aggregate(total=Sum('montant'))['total'] or Decimal('0.00')
             
+            # CORRECTION PRINCIPALE : Utiliser date_paiement au lieu de date et montant_paye au lieu de montant
             total_paiements_classe = Paiement.objects.filter(
                 eleve__in=eleves_classe,
-                date__year=annee_en_cours
-            ).aggregate(total=Sum('montant'))['total'] or 0
+                date_paiement__year=annee_en_cours,
+                status='Payé'
+            ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
             
             taux_paiement_classe = round(total_paiements_classe / total_frais_classe * 100, 1) if total_frais_classe > 0 else 0
         
@@ -1129,14 +1251,11 @@ def secretaire_dashboard(request):
     
     # Matières les plus enseignées
     matieres_data = []
-    # CORRECTION ICI : Utiliser annotate pour compter les notes
+    # Utiliser annotate pour compter les notes
     from django.db.models import Count
     
     # Option 1 : Si vous n'avez pas de related_name personnalisé dans le modèle Note
     matieres = Matiere.objects.annotate(note_count=Count('note'))
-    
-    # Option 2 : Si vous avez spécifié un related_name dans le modèle Note
-    # matieres = Matiere.objects.annotate(note_count=Count('notes'))
     
     for matiere in matieres:
         matieres_data.append({
@@ -1182,6 +1301,7 @@ def secretaire_dashboard(request):
             'priorite': "haute"
         }
     ]
+    
     pourcentage_en_attente = 0
     if total_eleves > 0:
         pourcentage_en_attente = (eleves_en_attente / total_eleves) * 100
@@ -1207,3 +1327,1134 @@ def secretaire_dashboard(request):
     }
     
     return render(request, 'gestion/dashboards/secretaire_dashboard.html', context)
+
+
+@login_required
+def surveillant_dashboard(request):
+    # Vérifier que l'utilisateur est bien un surveillant
+    if request.user.role != 'surveillant':
+        messages.error(request, "Accès refusé : vous n'êtes pas surveillant.")
+        return redirect('home:login')
+    
+    # Statistiques globales
+    total_eleves = Eleve.objects.count()
+    
+    # Taux de présence global
+    total_presences = Presence.objects.count()
+    presences_valides = Presence.objects.filter(present=True).count()
+    taux_presence_global = round(presences_valides / total_presences * 100, 1) if total_presences > 0 else 100
+    
+    # Absences et retards récents
+    annee_en_cours = date.today().year
+    mois_en_cours = date.today().month
+    
+    # Total des absences ce mois-ci
+    absences_mois = Presence.objects.filter(
+        present=False,
+        date__year=annee_en_cours,
+        date__month=mois_en_cours
+    ).count()
+    
+    # Total des retards ce mois-ci
+    retards_mois = Presence.objects.filter(
+        retard=True,
+        date__year=annee_en_cours,
+        date__month=mois_en_cours
+    ).count()
+    
+    # Élèves avec le plus d'absences
+    eleves_absences = []
+    for eleve in Eleve.objects.all():
+        absences = Presence.objects.filter(
+            eleve=eleve,
+            present=False,
+            date__year=annee_en_cours,
+            date__month=mois_en_cours
+        ).count()
+        
+        if absences > 0:
+            eleves_absences.append({
+                'eleve': eleve,
+                'absences': absences
+            })
+    
+    # Trier par nombre d'absences décroissant
+    eleves_absences = sorted(
+        eleves_absences, 
+        key=lambda x: x['absences'], 
+        reverse=True
+    )[:5]
+    
+    # Élèves avec le plus de retards
+    eleves_retards = []
+    for eleve in Eleve.objects.all():
+        retards = Presence.objects.filter(
+            eleve=eleve,
+            retard=True,
+            date__year=annee_en_cours,
+            date__month=mois_en_cours
+        ).count()
+        
+        if retards > 0:
+            eleves_retards.append({
+                'eleve': eleve,
+                'retards': retards
+            })
+    
+    # Trier par nombre de retards décroissant
+    eleves_retards = sorted(
+        eleves_retards, 
+        key=lambda x: x['retards'], 
+        reverse=True
+    )[:5]
+    
+   
+    
+    # Classes avec leurs taux d'absence
+    classes_data = []
+    for classe in Classe.objects.all():
+        eleves_classe = Eleve.objects.filter(classe_actuelle=classe)
+        total_presences_classe = Presence.objects.filter(
+            eleve__in=eleves_classe,
+            date__year=annee_en_cours,
+            date__month=mois_en_cours
+        ).count()
+        
+        absences_classe = Presence.objects.filter(
+            eleve__in=eleves_classe,
+            present=False,
+            date__year=annee_en_cours,
+            date__month=mois_en_cours
+        ).count()
+        
+        taux_absence = round(absences_classe / total_presences_classe * 100, 1) if total_presences_classe > 0 else 0
+        
+        classes_data.append({
+            'classe': classe,
+            'effectif': eleves_classe.count(),
+            'absences': absences_classe,
+            'taux_absence': taux_absence
+        })
+    
+    # Présences du jour
+    presences_du_jour = Presence.objects.filter(
+        date=date.today()
+    ).order_by('eleve__classe_actuelle__nom', 'eleve__utilisateur__last_name')
+    
+    # Notifications récentes
+    notifications_recentes = Notification.objects.filter(
+        utilisateur=request.user
+    ).order_by('-date_creation')[:5]
+    
+    # Événements récents
+    evenements_recents = [
+        {
+            'date': "Aujourd'hui",
+            'type': "Surveillance",
+            'description': "Contrôle des présences en cours"
+        },
+        {
+            'date': "Hier",
+            'type': "Sanction",
+            'description': "3 élèves sanctionnés pour indiscipline"
+        },
+        {
+            'date': "Il y a 3 jours",
+            'type': "Réunion",
+            'description': "Réunion des surveillants"
+        }
+    ]
+    
+    context = {
+        'total_eleves': total_eleves,
+        'taux_presence_global': taux_presence_global,
+        'absences_mois': absences_mois,
+        'retards_mois': retards_mois,
+        'eleves_absences': eleves_absences,
+        'eleves_retards': eleves_retards,
+        'classes_data': classes_data,
+        'presences_du_jour': presences_du_jour,
+        'notifications_recentes': notifications_recentes,
+        'evenements_recents': evenements_recents,
+        'mois_en_cours': mois_en_cours,
+        'annee_en_cours': annee_en_cours,
+    }
+    
+    return render(request, 'gestion/dashboards/surveillant_dashboard.html', context)
+
+
+
+# home/views.py
+
+
+@require_POST
+@csrf_protect
+@login_required
+def pointer_presence(request):
+    try:
+        # Vérifier que l'utilisateur est un élève
+        if not hasattr(request.user, 'eleve_profile'):
+            return JsonResponse({
+                'success': False,
+                'error': 'Vous n\'êtes pas autorisé à pointer votre présence'
+            }, status=403)
+        
+        # Récupérer la date (par défaut aujourd'hui)
+        date_str = request.POST.get('date')
+        if date_str:
+            try:
+                date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Format de date invalide'
+                }, status=400)
+        else:
+            date = timezone.now().date()
+        
+        # Vérifier si la présence n'a pas déjà été enregistrée
+        eleve = request.user.eleve_profile
+        if Presence.objects.filter(eleve=eleve, date=date).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Vous avez déjà pointé votre présence pour cette date'
+            }, status=400)
+        
+        # Enregistrer la présence
+        presence = Presence.objects.create(
+            eleve=eleve,
+            date=date,
+            present=True
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Présence enregistrée avec succès'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+        
+        
+        
+        # paiements 
+        
+        
+# home/views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum, Count, Q
+from django.http import JsonResponse, HttpResponse
+from django.template.loader import render_to_string
+from django.core.paginator import Paginator
+from datetime import date, timedelta
+from decimal import Decimal
+import logging
+from io import BytesIO
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+
+# Configuration du logging
+logger = logging.getLogger(__name__)
+@login_required
+def paiement_dashboard(request):
+    """Affiche le tableau de bord des paiements selon le rôle de l'utilisateur"""
+    role = request.user.role
+    
+    # Initialiser les variables
+    eleve = None
+    enfants = []
+    frais = None
+    paiements = None
+    total_a_payer = Decimal('0.00')
+    total_paye = Decimal('0.00')
+    taux_paiement = 0
+    
+    # Cas 1: Élève - voir ses propres paiements
+    if role == 'eleve':
+        try:
+            eleve = request.user.eleve_profile
+            frais = Frais.objects.filter(niveau=eleve.classe_actuelle.niveau)
+            
+            # Calculer les totaux
+            for f in frais:
+                total_a_payer += f.montant
+                total_paye += f.paiements.filter(
+                    eleve=eleve, 
+                    status='Payé'  # CORRECTION : Utiliser 'status' au lieu de 'statut'
+                ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
+            
+            if total_a_payer > 0:
+                taux_paiement = round(total_paye / total_a_payer * 100, 1)
+            else:
+                taux_paiement = 100
+                
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des données de paiement pour l'élève: {str(e)}")
+            messages.error(request, "Une erreur est survenue lors de la récupération de vos données de paiement.")
+    
+    # Cas 2: Parent - voir les paiements de ses enfants
+    elif role == 'parent':
+        try:
+            parent = request.user.parent_profile
+            enfants = parent.enfants.all()
+            
+            # Calculer les totaux pour tous les enfants
+            for enfant in enfants:
+                frais_enfant = Frais.objects.filter(niveau=enfant.classe_actuelle.niveau)
+                for f in frais_enfant:
+                    total_a_payer += f.montant
+                    total_paye += f.paiements.filter(
+                        eleve=enfant, 
+                        status='Payé'  # CORRECTION : Utiliser 'status' au lieu de 'statut'
+                    ).aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
+            
+            if total_a_payer > 0:
+                taux_paiement = round(total_paye / total_a_payer * 100, 1)
+            else:
+                taux_paiement = 100
+                
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des données de paiement pour le parent: {str(e)}")
+            messages.error(request, "Une erreur est survenue lors de la récupération des données de paiement.")
+    
+    # Cas 3: Administrateur, directeur, secrétaire - voir tous les paiements
+    elif role in ['admin', 'directeur', 'secretaire']:
+        # Filtrer par classe ou niveau si spécifié
+        classe_id = request.GET.get('classe')
+        niveau_id = request.GET.get('niveau')
+        
+        # Obtenir tous les frais et paiements
+        frais = Frais.objects.all()
+        paiements = Paiement.objects.all()
+        
+        # Appliquer les filtres si nécessaire
+        if classe_id:
+            paiements = paiements.filter(eleve__classe_actuelle_id=classe_id)
+            frais = frais.filter(niveau__classes__id=classe_id)
+        elif niveau_id:
+            paiements = paiements.filter(eleve__classe_actuelle__niveau_id=niveau_id)
+            frais = frais.filter(niveau_id=niveau_id)
+        
+        # Calculer les totaux
+        total_a_payer = frais.aggregate(total=Sum('montant'))['total'] or Decimal('0.00')
+        total_paye = paiements.filter(status='Payé').aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')  # CORRECTION : Utiliser 'status' au lieu de 'statut'
+        
+        if total_a_payer > 0:
+            taux_paiement = round(total_paye / total_a_payer * 100, 1)
+        else:
+            taux_paiement = 100
+    
+    # Pagination des paiements
+    if role in ['admin', 'directeur', 'secretaire']:
+        paiements_list = paiements
+    else:
+        # Pour élève/parent, on utilise une liste plus simple
+        paiements_list = []
+        if role == 'eleve':
+            for f in frais:
+                paiements_list.extend(f.paiements.filter(eleve=eleve))
+        else:
+            for enfant in enfants:
+                for f in Frais.objects.filter(niveau=enfant.classe_actuelle.niveau):
+                    paiements_list.extend(f.paiements.filter(eleve=enfant))
+    
+    # Pagination
+    page = request.GET.get('page', 1)
+    items_per_page = 10
+    start_index = (page - 1) * items_per_page
+    end_index = start_index + items_per_page
+    paginated_paiements = paiements_list[start_index:end_index]
+    total_pages = (len(paiements_list) + items_per_page - 1) // items_per_page
+    
+    context = {
+        'role': role,
+        'eleve': eleve,
+        'enfants': enfants,
+        'frais': frais,
+        'paiements': paginated_paiements,
+        'total_a_payer': total_a_payer,
+        'total_paye': total_paye,
+        'taux_paiement': taux_paiement,
+        'current_year': date.today().year,
+        'page': page,
+        'total_pages': total_pages,
+        'has_previous': page > 1,
+        'has_next': page < total_pages,
+    }
+    
+    return render(request, 'gestion/dashboards/paiement_dashboard.html', context)
+
+# home/views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from decimal import Decimal
+from datetime import date
+from .models import Frais, Paiement, Eleve
+
+
+
+
+# home/views.py
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from decimal import Decimal
+from .models import Paiement, Frais
+from .forms import CaisseForm
+
+@login_required
+def caisse(request):
+    """
+    Vue simple de caisse enregistreuse comme dans les supermarchés
+    """
+    # Vérifier que l'utilisateur a le droit d'accéder à la caisse
+    if request.user.role not in ['secretaire', 'admin', 'directeur']:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à accéder à la caisse")
+        return redirect('home:dashboard')
+    
+    # Initialiser le formulaire
+    form = CaisseForm()
+    montant_rendu = None
+    paiement_enregistre = None
+    
+    if request.method == "POST":
+        form = CaisseForm(request.POST)
+        if form.is_valid():
+            # Récupérer les données du formulaire
+            eleve = form.cleaned_data['eleve']
+            frais = form.cleaned_data['frais']
+            montant_paye = form.cleaned_data['montant_paye']
+            type_paiement = form.cleaned_data['type_paiement']
+            numero_transaction = form.cleaned_data['numero_transaction']
+            
+            # Calculer le montant dû
+            montant_total = frais.montant
+            
+            # Créer le paiement
+            paiement = Paiement(
+                eleve=eleve,
+                frais=frais,
+                montant_total=montant_total,
+                montant_paye=montant_paye,
+                type_paiement=type_paiement,
+                numero_transaction=numero_transaction,
+                personnel=request.user
+            )
+            
+            # Calculer la différence rendue
+            if montant_paye > montant_total:
+                paiement.difference_rendue = montant_paye - montant_total
+                montant_rendu = paiement.difference_rendue
+            else:
+                paiement.difference_rendue = Decimal('0.00')
+                montant_rendu = Decimal('0.00')
+            
+            # Déterminer le statut
+            if montant_paye >= montant_total:
+                paiement.status = 'Payé'
+            elif montant_paye > Decimal('0.00'):
+                paiement.status = 'Partiellement payé'
+            else:
+                paiement.status = 'Non payé'
+            
+            # Sauvegarder le paiement
+            paiement.save()
+            
+            paiement_enregistre = paiement
+            messages.success(request, f"Paiement enregistré avec succès ! Différence rendue : {montant_rendu} XAF")
+    
+    context = {
+        'form': form,
+        'montant_rendu': montant_rendu,
+        'paiement_enregistre': paiement_enregistre,
+        'title': "Caisse enregistreuse"
+    }
+    
+    return render(request, 'gestion/caisse/caisse.html', context)
+
+
+
+@login_required
+def detail_paiement(request, pk):
+    paiement = get_object_or_404(Paiement, pk=pk)
+    
+    # Vérifier que l'utilisateur a le droit de voir ce paiement
+    if request.user.role == 'eleve' and paiement.eleve.utilisateur != request.user:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à voir ce paiement")
+        return redirect('home:paiement_dashboard')
+    elif request.user.role == 'parent':
+        try:
+            parent = request.user.parent_profile
+            if paiement.eleve not in parent.enfants.all():
+                messages.error(request, "Accès refusé : vous n'êtes pas autorisé à voir ce paiement")
+                return redirect('home:paiement_dashboard')
+        except Parent.DoesNotExist:
+            messages.error(request, "Profil parent introuvable")
+            return redirect('home:paiement_dashboard')
+    
+    return render(request, 'gestion/paiements/detail_paiement.html', {
+        'paiement': paiement
+    })
+
+
+# home/views.py
+@login_required
+def detail_paiement(request, pk):
+    paiement = get_object_or_404(Paiement, pk=pk)
+    
+    # Vérifier que l'utilisateur a le droit de voir ce paiement
+    if request.user.role == 'eleve' and paiement.eleve.utilisateur != request.user:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à voir ce paiement")
+        return redirect('home:paiement_dashboard')
+    elif request.user.role == 'parent':
+        try:
+            parent = request.user.parent_profile
+            if paiement.eleve not in parent.enfants.all():
+                messages.error(request, "Accès refusé : vous n'êtes pas autorisé à voir ce paiement")
+                return redirect('home:paiement_dashboard')
+        except Parent.DoesNotExist:
+            messages.error(request, "Profil parent introuvable")
+            return redirect('home:paiement_dashboard')
+    
+    return render(request, 'gestion/paiements/detail_paiement.html', {
+        'paiement': paiement
+    })
+    
+    # home/views.py
+@login_required
+def liste_paiements(request):
+    # Vérifier que l'utilisateur a le droit d'accéder à la liste des paiements
+    if request.user.role not in ['secretaire', 'admin', 'directeur', 'parent', 'eleve']:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à voir les paiements")
+        return redirect('home:dashboard')
+
+    # Initialiser la liste des paiements
+    paiements_list = Paiement.objects.select_related('eleve__utilisateur', 'eleve__classe_actuelle', 'frais')
+    
+    # Filtrer selon le rôle de l'utilisateur
+    if request.user.role == 'eleve':
+        paiements_list = paiements_list.filter(eleve__utilisateur=request.user)
+    elif request.user.role == 'parent':
+        try:
+            parent = request.user.parent_profile
+            paiements_list = paiements_list.filter(eleve__in=parent.enfants.all())
+        except Parent.DoesNotExist:
+            paiements_list = Paiement.objects.none()
+    
+    # Filtre par statut
+    statut = request.GET.get("statut", "").strip()
+    if statut and statut in dict(STATUS_PAIEMENT_CHOICES).keys():
+        paiements_list = paiements_list.filter(status=statut)
+
+    # Filtre par élève
+    eleve_id = request.GET.get("eleve", "").strip()
+    if eleve_id and request.user.role in ['secretaire', 'admin', 'directeur']:
+        paiements_list = paiements_list.filter(eleve_id=eleve_id)
+
+    # Filtre par période
+    periode = request.GET.get("periode", "").strip()
+    today = date.today()
+
+    if periode == "today":
+        paiements_list = paiements_list.filter(date_paiement=today)
+    elif periode == "week":
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
+        paiements_list = paiements_list.filter(date_paiement__range=[start_week, end_week])
+    elif periode == "month":
+        paiements_list = paiements_list.filter(date_paiement__month=today.month, date_paiement__year=today.year)
+
+    # Pagination
+    paginator = Paginator(paiements_list, 10)
+    page_number = request.GET.get('page')
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    # Statistiques
+    stats = {
+        'total': paiements_list.count(),
+        'payes': paiements_list.filter(status='Payé').count(),
+        'partiels': paiements_list.filter(status='Partiellement payé').count(),
+        'non_payes': paiements_list.filter(status='Non payé').count(),
+    }
+
+    # Liste des élèves pour le filtre (réservé aux secrétaires, admins et directeurs)
+    eleves = []
+    if request.user.role in ['secretaire', 'admin', 'directeur']:
+        eleves = Eleve.objects.all().order_by('utilisateur__last_name')
+
+    return render(request, 'gestion/paiements/liste_paiements.html', {
+        'paiements': page_obj,
+        'stats': stats,
+        'filtre_statut': statut,
+        'filtre_eleve': eleve_id,
+        'filtre_periode': periode,
+        'eleves': eleves,
+        'STATUS_PAIEMENT_CHOICES': STATUS_PAIEMENT_CHOICES,
+    })
+    
+    
+    # home/views.py
+@login_required
+def caisse_dashboard(request):
+    # Vérifier que l'utilisateur a le droit d'accéder à la caisse
+    if request.user.role not in ['secretaire', 'admin', 'directeur']:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à accéder à la caisse")
+        return redirect('home:dashboard')
+
+    # Frais à payer (non payés ou partiellement payés)
+    frais_a_payer = Frais.objects.filter(date_limite__gte=date.today())
+    
+    # Paiements récents
+    paiements = Paiement.objects.all().order_by('-date_paiement')[:20]
+
+    # Statistiques financières
+    annee_en_cours = date.today().year
+    total_frais = frais_a_payer.aggregate(total=Sum('montant'))['total'] or Decimal('0.00')
+    
+    paiements_valides = paiements.filter(status='Payé')
+    total_paiements = paiements_valides.aggregate(total=Sum('montant_paye'))['total'] or Decimal('0.00')
+    
+    taux_paiement = round(total_paiements / total_frais * 100, 1) if total_frais > 0 else 100
+    
+    # Frais en retard
+    frais_en_retard = Frais.objects.filter(date_limite__lt=date.today()).exclude(
+        paiements__status='Payé'
+    ).distinct()
+
+    return render(request, 'gestion/paiements/caisse_dashboard.html', {
+        'frais_a_payer': frais_a_payer,
+        'paiements': paiements,
+        'total_frais': total_frais,
+        'total_paiements': total_paiements,
+        'taux_paiement': taux_paiement,
+        'frais_en_retard': frais_en_retard,
+        'annee_en_cours': annee_en_cours,
+    })
+    
+    
+    
+    
+@login_required
+def ajouter_frais(request):
+    """
+    Vue pour ajouter de nouveaux frais scolaires.
+    Accessible uniquement aux administrateurs, directeurs et secrétaires.
+    """
+    # Vérifier que l'utilisateur a le droit d'ajouter des frais
+    if request.user.role not in ['admin', 'directeur', 'secretaire']:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à ajouter des frais")
+        return redirect('home:paiement_dashboard')
+    
+    if request.method == "POST":
+        form = FraisForm(request.POST)
+        if form.is_valid():
+            frais = form.save()
+            messages.success(
+                request,
+                f"Nouveaux frais ajoutés avec succès : {frais.description} - {frais.montant} XAF"
+            )
+            return redirect('home:paiement_dashboard')
+    else:
+        form = FraisForm()
+
+    context = {
+        'form': form,
+        'title': "Ajouter des frais"
+    }
+    
+    return render(request, 'gestion/paiements/ajouter_frais.html', context)
+
+
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+import json
+
+@login_required
+def notifications_liste(request):
+    """Affiche la liste des notifications"""
+    statut = request.GET.get('statut')
+    
+    # Filtrer les notifications
+    notifications = request.user.notifications.all().order_by('-date_creation')
+    if statut:
+        notifications = notifications.filter(statut=statut)
+    
+    # Pagination
+    paginator = Paginator(notifications, 10)
+    page_number = request.GET.get('page')
+    notifications_page = paginator.get_page(page_number)
+    
+    context = {
+        'notifications': notifications_page,
+        'statut': statut
+    }
+    
+    return render(request, 'gestion/notifications/liste.html', context)
+
+@login_required
+def notifications_archives(request):
+    """Affiche les notifications archivées"""
+    notifications = request.user.notifications.filter(archive=True).order_by('-date_creation')
+    
+    # Pagination
+    paginator = Paginator(notifications, 10)
+    page_number = request.GET.get('page')
+    notifications_page = paginator.get_page(page_number)
+    
+    context = {
+        'notifications': notifications_page,
+        'statut': 'ARCHIVE'
+    }
+    
+    return render(request, 'gestion/notifications/liste.html', context)
+
+@login_required
+def marquer_notification_lue(request):
+    """Marque une notification comme lue"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            notification_id = data.get('id')
+            
+            if notification_id:
+                notification = request.user.notifications.get(id=notification_id)
+                notification.statut = 'LU'
+                notification.save()
+                
+                return JsonResponse({'success': True})
+            
+            return JsonResponse({'success': False, 'error': 'ID de notification manquant'}, status=400)
+        
+        except Notification.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Notification non trouvée'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
+
+@login_required
+def marquer_tout_lu(request):
+    """Marque toutes les notifications comme lues"""
+    if request.method == 'POST':
+        try:
+            request.user.notifications.filter(statut='NON_LU').update(statut='LU')
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
+
+@login_required
+def archiver_notification(request):
+    """Archive une notification"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            notification_id = data.get('id')
+            
+            if notification_id:
+                notification = request.user.notifications.get(id=notification_id)
+                notification.archive = True
+                notification.save()
+                
+                return JsonResponse({'success': True})
+            
+            return JsonResponse({'success': False, 'error': 'ID de notification manquant'}, status=400)
+        
+        except Notification.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Notification non trouvée'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
+
+@login_required
+def supprimer_notification(request):
+    """Supprime une notification"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            notification_id = data.get('id')
+            
+            if notification_id:
+                request.user.notifications.filter(id=notification_id).delete()
+                return JsonResponse({'success': True})
+            
+            return JsonResponse({'success': False, 'error': 'ID de notification manquant'}, status=400)
+        
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
+
+
+
+# home/views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect
+from django.utils import timezone
+import json
+from .models import Message
+
+@login_required
+def messagerie_liste(request):
+    """Affiche la liste des messages de l'utilisateur"""
+    # Déterminer le type de boîte (inbox ou sent)
+    boite = request.GET.get('boite', 'inbox')
+    recherche = request.GET.get('q', '')
+    
+    # Filtrer les messages selon la boîte
+    if boite == 'sent':
+        # Messages envoyés
+        messages_list = request.user.messages_envoyes.filter(
+            supprime_expediteur=False
+        ).select_related('destinataire')
+    else:
+        # Messages reçus (inbox par défaut)
+        boite = 'inbox'
+        messages_list = request.user.messages_recus.filter(
+            supprime_destinataire=False
+        ).select_related('expediteur')
+    
+    # Appliquer la recherche si nécessaire
+    if recherche:
+        if boite == 'sent':
+            messages_list = messages_list.filter(
+                Q(destinataire__first_name__icontains=recherche) |
+                Q(destinataire__last_name__icontains=recherche) |
+                Q(objet__icontains=recherche) |
+                Q(contenu__icontains=recherche)
+            )
+        else:
+            messages_list = messages_list.filter(
+                Q(expediteur__first_name__icontains=recherche) |
+                Q(expediteur__last_name__icontains=recherche) |
+                Q(objet__icontains=recherche) |
+                Q(contenu__icontains=recherche)
+            )
+    
+    # Trier par date
+    messages_list = messages_list.order_by('-date_envoi')
+    
+    # Pagination
+    paginator = Paginator(messages_list, 15)
+    page_number = request.GET.get('page')
+    messages_page = paginator.get_page(page_number)
+    
+    context = {
+        'boite': boite,
+        'messages': messages_page,
+        'recherche': recherche,
+        'total_non_lus': request.user.messages_recus.filter(lu=False, supprime_destinataire=False).count()
+    }
+    
+    return render(request, 'gestion/messagerie/liste.html', context)
+
+@login_required
+def messagerie_detail(request, message_id):
+    """Affiche un message spécifique"""
+    message = get_object_or_404(
+        Message,
+        id=message_id,
+        destinataire=request.user,
+        supprime_destinataire=False
+    )
+    
+    # Marquer comme lu si ce n'est pas déjà fait
+    if not message.lu:
+        message.marquer_comme_lu()
+    
+    context = {
+        'message': message
+    }
+    
+    return render(request, 'gestion/messagerie/detail.html', context)
+
+@login_required
+def messagerie_nouveau(request):
+    """Affiche le formulaire pour un nouveau message"""
+    destinataire_id = request.GET.get('destinataire')
+    destinataire = None
+    
+    if destinataire_id:
+        try:
+            destinataire = Utilisateur.objects.get(id=destinataire_id)
+        except Utilisateur.DoesNotExist:
+            messages.error(request, _("Destinataire invalide."))
+    
+    context = {
+        'destinataire': destinataire
+    }
+    
+    return render(request, 'gestion/messagerie/nouveau.html', context)
+
+@require_POST
+@csrf_protect
+@login_required
+def messagerie_envoyer(request):
+    """Traite l'envoi d'un nouveau message"""
+    try:
+        data = json.loads(request.body)
+        destinataire_id = data.get('destinataire_id')
+        objet = data.get('objet', '').strip()
+        contenu = data.get('contenu', '').strip()
+        
+        # Validation des données
+        if not destinataire_id or not objet or not contenu:
+            return JsonResponse({
+                'success': False,
+                'error': _("Veuillez remplir tous les champs requis.")
+            }, status=400)
+        
+        # Vérifier que le destinataire existe
+        try:
+            destinataire = Utilisateur.objects.get(id=destinataire_id)
+        except Utilisateur.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': _("Destinataire invalide.")
+            }, status=400)
+        
+        # Vérifier que l'expéditeur et le destinataire sont différents
+        if request.user == destinataire:
+            return JsonResponse({
+                'success': False,
+                'error': _("Vous ne pouvez pas vous envoyer de message à vous-même.")
+            }, status=400)
+        
+        # Créer le message
+        message = Message.objects.create(
+            expediteur=request.user,
+            destinataire=destinataire,
+            objet=objet,
+            contenu=contenu
+        )
+        
+        # Créer une notification
+        Notification.objects.create(
+            utilisateur=destinataire,
+            type_notification='MESSAGE',
+            objet=_("Nouveau message"),
+            message=f"{request.user.get_full_name()} vous a envoyé un message : {objet}",
+            lien=f"/messagerie/{message.id}/",
+            priorite=2
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message_id': message.id,
+            'redirect_url': f"/messagerie/{message.id}/"
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': _("Erreur lors de l'envoi du message.")
+        }, status=500)
+
+@login_required
+def messagerie_repondre(request, message_id):
+    """Affiche le formulaire de réponse à un message"""
+    message_original = get_object_or_404(
+        Message,
+        id=message_id,
+        destinataire=request.user
+    )
+    
+    context = {
+        'message_original': message_original,
+        'destinataire': message_original.expediteur
+    }
+    
+    return render(request, 'gestion/messagerie/repondre.html', context)
+
+@require_POST
+@csrf_protect
+@login_required
+def messagerie_marquer_lu(request):
+    """Marque un message comme lu via AJAX"""
+    try:
+        data = json.loads(request.body)
+        message_id = data.get('id')
+        
+        if not message_id:
+            return JsonResponse({
+                'success': False,
+                'error': _("ID de message manquant.")
+            }, status=400)
+        
+        message = get_object_or_404(
+            Message,
+            id=message_id,
+            destinataire=request.user
+        )
+        
+        message.marquer_comme_lu()
+        
+        return JsonResponse({
+            'success': True,
+            'total_non_lus': request.user.messages_recus.filter(lu=False, supprime_destinataire=False).count()
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': _("Erreur lors du marquage du message comme lu.")
+        }, status=500)
+
+@require_POST
+@csrf_protect
+@login_required
+def messagerie_supprimer(request):
+    """Supprime un message"""
+    try:
+        data = json.loads(request.body)
+        message_id = data.get('id')
+        type_suppression = data.get('type', 'destinataire')  # 'destinataire' ou 'expediteur'
+        
+        if not message_id:
+            return JsonResponse({
+                'success': False,
+                'error': _("ID de message manquant.")
+            }, status=400)
+        
+        if type_suppression == 'expediteur':
+            message = get_object_or_404(
+                Message,
+                id=message_id,
+                expediteur=request.user
+            )
+            message.supprimer_pour_expediteur()
+        else:
+            message = get_object_or_404(
+                Message,
+                id=message_id,
+                destinataire=request.user
+            )
+            message.supprimer_pour_destinataire()
+        
+        return JsonResponse({
+            'success': True,
+            'message': _("Message supprimé avec succès.")
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': _("Erreur lors de la suppression du message.")
+        }, status=500)
+
+@login_required
+def messagerie_api(request):
+    """API pour les fonctionnalités en temps réel de la messagerie"""
+    # Nombre de messages non lus
+    non_lus = request.user.messages_recus.filter(lu=False, supprime_destinataire=False).count()
+    
+    # Derniers messages
+    derniers_messages = request.user.messages_recus.filter(supprime_destinataire=False).select_related('expediteur')[:5]
+    
+    data = {
+        'non_lus': non_lus,
+        'derniers_messages': [{
+            'id': msg.id,
+            'expediteur': msg.expediteur.get_full_name(),
+            'objet': msg.objet,
+            'date': msg.date_envoi.isoformat(),
+            'lu': msg.lu
+        } for msg in derniers_messages]
+    }
+    
+    return JsonResponse(data)
+
+
+
+
+
+@login_required
+def generer_recu(request, paiement_id):
+    paiement = get_object_or_404(Paiement, id=paiement_id)
+    
+    # Vérifier que l'utilisateur a le droit de voir ce reçu
+    if request.user.role == 'eleve' and paiement.eleve.utilisateur != request.user:
+        messages.error(request, "Vous n'êtes pas autorisé à voir ce reçu.")
+        return redirect('home:paiement_dashboard')
+    elif request.user.role == 'parent':
+        try:
+            parent = request.user.parent_profile
+            if paiement.eleve not in parent.enfants.all():
+                messages.error(request, "Vous n'êtes pas autorisé à voir ce reçu.")
+                return redirect('home:paiement_dashboard')
+        except Parent.DoesNotExist:
+            messages.error(request, "Profil parent introuvable.")
+            return redirect('home:paiement_dashboard')
+    
+    # Créer le PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="recu_{paiement.id}.pdf"'
+    
+    p = canvas.Canvas(response, pagesize=letter)
+    width, height = letter
+    
+    # En-tête
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, height - 50, "REÇU DE PAIEMENT")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(50, height - 80, f"École: Capitole School")
+    p.drawString(50, height - 100, f"Date: {paiement.date.strftime('%d/%m/%Y')}")
+    p.drawString(50, height - 120, f"Référence: {paiement.reference or 'N/A'}")
+    
+    # Informations de l'élève
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(50, height - 160, "Informations de l'élève:")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(50, height - 180, f"Nom: {paiement.eleve.utilisateur.get_full_name()}")
+    p.drawString(50, height - 200, f"Classe: {paiement.eleve.classe_actuelle}")
+    p.drawString(50, height - 220, f"Niveau: {paiement.eleve.classe_actuelle.niveau}")
+    
+    # Détails du paiement
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(50, height - 260, "Détails du paiement:")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(50, height - 280, f"Frais: {paiement.frais.description}")
+    p.drawString(50, height - 300, f"Montant: {paiement.montant} XAF")
+    p.drawString(50, height - 320, f"Moyen: {dict(Paiement.MOYENS).get(paiement.moyen, paiement.moyen)}")
+    p.drawString(50, height - 340, f"Statut: {dict(Paiement.STATUT_CHOICES).get(paiement.statut, paiement.statut)}")
+    
+    if paiement.commentaire:
+        p.drawString(50, height - 360, f"Commentaire: {paiement.commentaire}")
+    
+    # Pied de page
+    p.setFont("Helvetica-Oblique", 10)
+    p.drawString(50, 50, "Ce reçu est valable sans cachet ni signature.")
+    p.drawString(50, 35, "Capitole School - Contact: contact@capitole-school.cd")
+    
+    p.showPage()
+    p.save()
+    
+    return response

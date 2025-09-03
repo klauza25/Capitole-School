@@ -21,6 +21,8 @@ urlpatterns = [
     path('dashboard/parent/', views.parent_dashboard, name='parent_dashboard'),
     path('dashboard/secretaire/', views.secretaire_dashboard, name='secretaire_dashboard'),
     path('dashboard/surveillant/', views.surveillant_dashboard, name='surveillant_dashboard'),
+    path('dashboard/paiement_dashboard/', views.paiement_dashboard, name='paiement_dashboard'),
+
     path('parent/', views.parent_dashboard, name='parent_dashboard'),
     path('parent/', views.ajouter_parent, name='ajouter_parent'),
     path('parents/<int:pk>/modifier/', views.modifier_parent, name='modifier_parent'),
@@ -68,4 +70,36 @@ urlpatterns = [
     path('notifications/<int:pk>/supprimer/', views.notifications_supprimer, name='notifications_supprimer'),
     path('notifications/tout-supprimer/', views.notifications_supprimer_tout, name='notifications_supprimer_tout'),
     path('api/notifications/', views.notifications_api, name='notifications_api'),
+    path('pointer-presence/', views.pointer_presence, name='pointer_presence'),
+    
+    path('notifications/', views.notifications_liste, name='notifications'),
+    path('notifications/archives/', views.notifications_archives, name='notifications_archives'),
+    path('notifications/marquer-lu/', views.marquer_notification_lue, name='marquer_notification_lue'),
+    path('notifications/marquer-tout-lu/', views.marquer_tout_lu, name='marquer_tout_lu'),
+    path('notifications/archiver/', views.archiver_notification, name='archiver_notification'),
+    path('notifications/supprimer/', views.supprimer_notification, name='supprimer_notification'),
+    
+    
+    # messages
+    
+    path('messagerie/', views.messagerie_liste, name='messagerie'),
+    path('messagerie/<int:message_id>/', views.messagerie_detail, name='messagerie_detail'),
+    path('messagerie/nouveau/', views.messagerie_nouveau, name='messagerie_nouveau'),
+    path('messagerie/envoyer/', views.messagerie_envoyer, name='messagerie_envoyer'),
+    path('messagerie/<int:message_id>/repondre/', views.messagerie_repondre, name='messagerie_repondre'),
+    path('messagerie/marquer-lu/', views.messagerie_marquer_lu, name='messagerie_marquer_lu'),
+    path('messagerie/supprimer/', views.messagerie_supprimer, name='messagerie_supprimer'),
+    path('messagerie/api/', views.messagerie_api, name='messagerie_api'),
+    
+    
+    path('dashboard/paiement/', views.paiement_dashboard, name='paiement_dashboard'),
+    path('caisse/', views.caisse, name='caisse'),
+    path('dashboard/detail/<int:pk>/', views.detail_paiement, name='detail_paiement'),
+    path('dashboard/liste/', views.liste_paiements, name='liste_paiements'),
+    path('dashboard/caisse/', views.caisse_dashboard, name='caisse_dashboard'),
+    path('dashboard/recu/<int:paiement_id>/', views.generer_recu, name='generer_recu'),
+    
+    path('paiement/ajouter_frais/', views.ajouter_frais, name='ajouter_frais'),
+    
+    
 ]

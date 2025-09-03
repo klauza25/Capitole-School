@@ -1,0 +1,248 @@
+<!-- templates/gestion/paiements/caisse_dashboard.html -->
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}Caisse - Capitole School{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:paiement_dashboard' %}">Paiements</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:liste_paiements' %}">Liste des paiements</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Caisse</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Paiements</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                            <i class="fas fa-wallet me-2"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:enregistrer_paiement' %}">
+                            <i class="fas fa-plus me-2"></i> Enregistrer un paiement
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:liste_paiements' %}">
+                            <i class="fas fa-file-invoice me-2"></i> Liste des paiements
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-cash-register me-2"></i> Caisse
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">Caisse</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{% url 'home:enregistrer_paiement' %}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-plus me-1"></i> Nouveau paiement
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Statistiques financières -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card text-white bg-primary shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_frais|floatformat:0 }} XAF</h5>
+                            <p class="card-text small">Total des frais</p>
+                            <i class="fas fa-file-invoice-dollar fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-white bg-success shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ total_paiements|floatformat:0 }} XAF</h5>
+                            <p class="card-text small">Total encaissé</p>
+                            <i class="fas fa-check-circle fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-white bg-info shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ taux_paiement }}%</h5>
+                            <p class="card-text small">Taux de paiement</p>
+                            <i class="fas fa-chart-bar fa-2x opacity-50 ms-auto"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Frais à payer -->
+            <div class="card bg-dark shadow mb-4">
+                <div class="card-header bg-gradient-primary d-flex align-items-center">
+                    <i class="fas fa-file-invoice me-2"></i>
+                    <h5 class="mb-0">Frais à payer ({{ annee_en_cours }})</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Niveau</th>
+                                    <th>Montant</th>
+                                    <th>Date limite</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for frais in frais_a_payer %}
+                                <tr>
+                                    <td>{{ frais.description }}</td>
+                                    <td>{{ frais.niveau }}</td>
+                                    <td><strong>{{ frais.montant|floatformat:0 }} XAF</strong></td>
+                                    <td>{{ frais.date_limite|date:"d M Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'home:enregistrer_paiement' frais.id %}" 
+                                           class="btn btn-sm btn-outline-success">
+                                            <i class="fas fa-plus me-1"></i> Enregistrer
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="fas fa-file-invoice me-2"></i>
+                                        Aucun frais à payer
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paiements récents -->
+            <div class="card bg-dark shadow">
+                <div class="card-header bg-gradient-success d-flex align-items-center">
+                    <i class="fas fa-cash-register me-2"></i>
+                    <h5 class="mb-0">Paiements récents</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th><i class="fas fa-user me-1"></i> Élève</th>
+                                    <th><i class="fas fa-file-invoice me-1"></i> Frais</th>
+                                    <th><i class="fas fa-calendar me-1"></i> Date</th>
+                                    <th><i class="fas fa-money-bill-wave me-1"></i> Montant</th>
+                                    <th><i class="fas fa-wallet me-1"></i> Moyen</th>
+                                    <th><i class="fas fa-receipt me-1"></i> Référence</th>
+                                    <th><i class="fas fa-info-circle me-1"></i> Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for paiement in paiements %}
+                                <tr>
+                                    <td>{{ paiement.eleve.utilisateur.get_full_name }}</td>
+                                    <td>{{ paiement.frais.description }}</td>
+                                    <td>{{ paiement.date_paiement|date:"d M Y" }}</td>
+                                    <td><strong>{{ paiement.montant_paye|floatformat:0 }} XAF</strong></td>
+                                    <td>{{ paiement.get_type_paiement_display }}</td>
+                                    <td>{{ paiement.numero_transaction|default:"-" }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ paiement.status|lower|replace:' ':'-' }}">
+                                            {{ paiement.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fas fa-cash-register me-2"></i>
+                                        Aucun paiement récent
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Frais en retard -->
+            {% if frais_en_retard %}
+            <div class="card bg-dark shadow mt-4">
+                <div class="card-header bg-gradient-danger d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <h5 class="mb-0">Frais en retard</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Niveau</th>
+                                    <th>Montant</th>
+                                    <th>Date limite</th>
+                                    <th>Retard</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for frais in frais_en_retard %}
+                                <tr>
+                                    <td>{{ frais.description }}</td>
+                                    <td>{{ frais.niveau }}</td>
+                                    <td><strong>{{ frais.montant|floatformat:0 }} XAF</strong></td>
+                                    <td>{{ frais.date_limite|date:"d M Y" }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">
+                                            {{ date.today|date:"U"|add:"-frais.date_limite|date:"U""|div:"86400"|floatformat:0 }} jours
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Gestion des liens de la sidebar
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Ferme la sidebar sur mobile après clic
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebarMenu');
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+</script>
+{% endblock %}

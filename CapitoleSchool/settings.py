@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'home',
     'django.contrib.humanize',
+    
 ]
 
 AUTH_USER_MODEL = 'gestion.Utilisateur' 

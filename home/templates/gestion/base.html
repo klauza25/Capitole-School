@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Capitole School{% endblock %}</title>
-    {% load static %}
+   {% load static %}
+{% load notification_extras %}  {# Ajoutez cette ligne #}
+
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --sidebar-width: 240px;
             --navbar-height: 56px;
+            --primary-color: #667eea;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --sidebar-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --success-color: #66CC00;
         }
 
         body {
@@ -18,6 +24,9 @@
             color: white;
             overflow: hidden;
             font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
         }
 
         /* Navbar fixe */
@@ -27,8 +36,9 @@
             left: 0;
             right: 0;
             z-index: 1030;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-gradient);
             height: var(--navbar-height);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
         .navbar-brand {
@@ -36,6 +46,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 1.5rem;
         }
 
         .navbar-brand::before {
@@ -50,33 +61,57 @@
             left: 0;
             width: var(--sidebar-width);
             height: calc(100vh - var(--navbar-height));
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: var(--sidebar-bg);
             color: white;
             z-index: 1020;
             overflow-y: auto;
             transition: transform 0.3s ease;
-            padding: 1rem;
+            padding: 1rem 0;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar h5 {
+            padding: 0 1rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
         }
 
         .sidebar .nav-link {
             color: #ccc;
-            border-radius: 8px;
-            margin-bottom: 4px;
+            border-radius: 0;
+            margin: 0;
+            padding: 0.75rem 1rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
         }
 
         .sidebar .nav-link:hover,
         .sidebar .nav-link.active {
-            color: #66CC00;
-            background: rgba(255,255,255,0.1);
+            color: var(--success-color);
+            background: rgba(255,255,255,0.05);
+            border-left-color: var(--success-color);
         }
 
         .sidebar .nav-link i {
             width: 24px;
             text-align: center;
+            margin-right: 8px;
         }
 
         .sidebar .nav-link span {
             font-size: 0.95rem;
+        }
+
+        .sidebar .nav-item {
+            margin: 0;
+        }
+
+        .sidebar .nav-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+            margin: 1rem 1rem;
         }
 
         /* Main Content */
@@ -90,6 +125,7 @@
             overflow-y: auto;
             background-color: #121212;
             transition: left 0.3s ease;
+            box-sizing: border-box;
         }
 
         /* Responsive Mobile */
@@ -98,6 +134,7 @@
                 transform: translateX(-100%);
                 width: 200px;
                 z-index: 1030;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
             }
             .sidebar.open {
                 transform: translateX(0);
@@ -115,16 +152,102 @@
 
         @media (max-width: 576px) {
             .navbar-brand {
-                font-size: 1.5rem;
+                font-size: 1.3rem;
             }
             .btn {
+                font-size: 0.8rem;
+            }
+            .sidebar .nav-link span {
                 font-size: 0.9rem;
             }
+        }
+
+        /* Animation d'entrée */
+        .sidebar, main {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Overlay mobile */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1010;
+            display: none;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Notifications */
+        .notification-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 0.6rem;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+        }
+        
+        /* Dropdown menu des notifications */
+        .notification-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 350px;
+            max-height: 500px;
+            overflow-y: auto;
+            background-color: #1a1a2e;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 1050;
+            display: none;
+        }
+        
+        .notification-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+        
+        .notification-item.unread {
+            background-color: rgba(102, 204, 0, 0.1);
+        }
+        
+        .notification-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-weight: bold;
+        }
+        
+        .notification-footer {
+            padding: 10px 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
         }
     </style>
     {% csrf_token %}
     <script>
-        document.cookie = 'csrftoken=' + document.querySelector('[name=csrfmiddlewaretoken]').value + '; path=/;';
+        // Stocker le CSRF token dans une variable globale
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     </script>
 </head>
 <body>
@@ -133,200 +256,211 @@
     <nav class="navbar navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'home:home' %}">Capitole School</a>
-            <div class="d-flex align-items-center gap-2">
-                <i class="fas fa-bell"></i>
-                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 32px; height: 32px; font-weight: bold;">
-                    {{ user.first_name|first|upper }}
+            <div class="d-flex align-items-center gap-3">
+                <!-- Icône de notification - CORRIGÉ POUR ÊTRE CLIQUABLE -->
+                <div class="position-relative">
+                    <a href="{% url 'home:notifications' %}" class="text-white text-decoration-none">
+                        <i class="fas fa-bell fs-5"></i>
+                        {% if request.user|has_unread_notifications %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
+                                {{ request.user.notifications.filter|length }}
+                            </span>
+                        {% endif %}
+                    </a>
                 </div>
+                
+                <!-- Affichage du rôle et nom de l'utilisateur -->
+                <span class="text-white d-none d-md-block">
+                    ({{user.role|title}}) - {{ user.first_name|upper }} {{ user.last_name|upper }}
+                </span>
+                
+                <!-- Avatar utilisateur -->
+                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" 
+                     style="width: 36px; height: 36px; font-weight: bold; font-size: 0.9rem;">
+                    {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                </div>
+                
                 <!-- Bouton mobile -->
                 <button class="btn btn-sm btn-outline-light d-none mobile-toggle" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
-                {% load notification_extras %}
-
-{% if request.user|has_unread_notifications %}
-    <!-- Afficher le badge de notification -->
-{% endif %}
             </div>
         </div>
     </nav>
 
-   <!-- Sidebar fixe -->
-<aside class="sidebar" id="sidebar">
-    <h5 class="mb-3 text-white">Menu</h5>
-    <ul class="nav flex-column">
-
-        <!-- Tableau de bord (tous les rôles) -->
-        <li class="nav-item">
-            <a class="nav-link active" href="{% url 'home:home' %}">
-                <i class="fas fa-home"></i> <span>Tableau de bord</span>
-            </a>
-        </li>
-
-        <!-- Admin, Directeur, Secrétaire -->
-
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:liste_cycles' %}">
-                    <i class="fas fa-book"></i> <span>Cycles</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:liste_niveaux' %}">
-                    <i class="fas fa-layer-group"></i> <span>Niveaux</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:liste_classes' %}">
-                    <i class="fas fa-users"></i> <span>Classes</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:liste_eleves' %}">
-                    <i class="fas fa-user-graduate"></i> <span>Élèves</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:liste_enseignants' %}">
-                    <i class="fas fa-chalkboard-teacher"></i> <span>Enseignants</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:liste_parents' %}">
-                    <i class="fas fa-user-friends"></i> <span>Parents</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-file-invoice-dollar"></i> <span>Paiements</span>
-                </a>
-            </li>
-       
-
-        <!-- Enseignant -->
-       
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
-                    <i class="fas fa-book"></i> <span>Matières</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
-                    <i class="fas fa-users"></i> <span>Classes</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
-                    <i class="fas fa-edit"></i> <span>Notes</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
-                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
-                    <i class="fas fa-clipboard"></i> <span>Présences</span>
-                </a>
-            </li>
-      
-<!-- Dans la sidebar, pour admin/directeur/secretaire -->
-
-    <li class="nav-item">
-        <a class="nav-link" href="{% url 'home:liste_enseignants' %}">
-            <i class="fas fa-chalkboard-teacher"></i> <span>Enseignants</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{% url 'home:liste_parents' %}">
-            <i class="fas fa-user-friends"></i> <span>Parents</span>
-        </a>
-    </li>
-
-        <!-- Élève -->
+    <!-- Sidebar fixe -->
+    <aside class="sidebar" id="sidebar">
+        <h5 class="mb-3 px-3">Menu</h5>
         
+        <ul class="nav flex-column">
+            <!-- Tableau de bord (tous les rôles) -->
             <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
-                    <i class="fas fa-clipboard"></i> <span>Mes Notes</span>
+                <a class="nav-link active" href="{% url 'home:home' %}">
+                    <i class="fas fa-home"></i> <span>Tableau de bord</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
-                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
-                    <i class="fas fa-clipboard"></i> <span>Présences</span>
-                </a>
-            </li>
-      
 
-        <!-- Parent -->
-        
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-user-graduate"></i> <span>Mes Enfants</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-clipboard"></i> <span>Notes</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-clipboard"></i> <span>Présences</span>
-                </a>
-            </li>
-       
+            <!-- Menu selon le rôle -->
+            {% if user.role in 'admin,directeur,secretaire' %}
+                <div class="nav-divider"></div>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:liste_cycles' %}">
+                        <i class="fas fa-book"></i> <span>Cycles</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:liste_niveaux' %}">
+                        <i class="fas fa-layer-group"></i> <span>Niveaux</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:liste_classes' %}">
+                        <i class="fas fa-users"></i> <span>Classes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:liste_eleves' %}">
+                        <i class="fas fa-user-graduate"></i> <span>Élèves</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:liste_enseignants' %}">
+                        <i class="fas fa-chalkboard-teacher"></i> <span>Enseignants</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:liste_parents' %}">
+                        <i class="fas fa-user-friends"></i> <span>Parents</span>
+                    </a>
+                </li>
+                <!-- LIEN DE PAIEMENT CORRIGÉ -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                        <i class="fas fa-file-invoice-dollar"></i> <span>Paiements</span>
+                    </a>
+                </li>
+            {% endif %}
 
-        <!-- Surveillant -->
-      
+            {% if user.role == 'enseignant' %}
+                <div class="nav-divider"></div>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                        <i class="fas fa-book"></i> <span>Matières</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                        <i class="fas fa-users"></i> <span>Classes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                        <i class="fas fa-edit"></i> <span>Notes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                        <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:enseignant_dashboard' %}">
+                        <i class="fas fa-clipboard"></i> <span>Présences</span>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% if user.role == 'eleve' %}
+                <div class="nav-divider"></div>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
+                        <i class="fas fa-clipboard"></i> <span>Mes Notes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
+                        <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:eleve_dashboard' %}">
+                        <i class="fas fa-clipboard"></i> <span>Présences</span>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% if user.role == 'parent' %}
+                <div class="nav-divider"></div>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:parent_dashboard' %}">
+                        <i class="fas fa-user-graduate"></i> <span>Mes Enfants</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:parent_dashboard' %}">
+                        <i class="fas fa-clipboard"></i> <span>Notes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:parent_dashboard' %}">
+                        <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:parent_dashboard' %}">
+                        <i class="fas fa-clipboard"></i> <span>Présences</span>
+                    </a>
+                </li>
+                <!-- LIEN DE PAIEMENT POUR LES PARENTS -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                        <i class="fas fa-file-invoice-dollar"></i> <span>Paiements</span>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% if user.role == 'surveillant' %}
+                <div class="nav-divider"></div>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:surveillant_dashboard' %}">
+                        <i class="fas fa-clipboard"></i> <span>Présences</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:surveillant_dashboard' %}">
+                        <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home:surveillant_dashboard' %}">
+                        <i class="fas fa-exclamation-triangle"></i> <span>Incidents</span>
+                    </a>
+                </li>
+            {% endif %}
+
+            <div class="nav-divider"></div>
+            
+            <!-- Paramètres (tous les rôles) -->
             <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-clipboard"></i> <span>Présences</span>
+                <a class="nav-link" href="/">
+                    <i class="fas fa-cog"></i> <span>Paramètres</span>
                 </a>
             </li>
+
+            <!-- Déconnexion (tous les rôles) -->
             <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-calendar-alt"></i> <span>Emploi du temps</span>
+                <a class="nav-link text-danger" href="{% url 'home:logout' %}">
+                    <i class="fas fa-sign-out-alt"></i> <span>Déconnexion</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#">
-                    <i class="fas fa-exclamation-triangle"></i> <span>Incidents</span>
-                </a>
-            </li>
-      
-
-        <!-- Paramètres (tous les rôles) -->
-        <li class="nav-item">
-            <a class="nav-link" href="#">
-                <i class="fas fa-cog"></i> <span>Paramètres</span>
-            </a>
-        </li>
-
-        <!-- Déconnexion (tous les rôles) -->
-        <li class="nav-item">
-            <a class="nav-link text-danger" href="{% url 'home:logout' %}">
-                <i class="fas fa-sign-out-alt"></i> <span>Déconnexion</span>
-            </a>
-        </li>
-    </ul>
-</aside>
-
+        </ul>
+    </aside>
 
     <!-- Overlay mobile -->
-    <div id="overlay" class="d-none" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1010; display: none;" onclick="closeSidebar()"></div>
+    <div id="overlay" onclick="closeSidebar()"></div>
 
     <!-- Contenu scrollable -->
-    <main id="main-content" class="bg-white">
+    <main id="main-content">
         {% block content %}
         {% endblock %}
     </main>
@@ -339,23 +473,24 @@
         const overlay = document.getElementById('overlay');
         const toggleBtn = document.querySelector('.mobile-toggle');
 
-        // Affiche le bouton sur mobile
-        if (window.innerWidth <= 768) {
-            toggleBtn.classList.remove('d-none');
-        }
-
-        window.addEventListener('resize', () => {
-            if (window.innerWidth > 768) {
+        // Vérifier la taille de l'écran au chargement
+        function checkScreenSize() {
+            if (window.innerWidth <= 768) {
+                toggleBtn.classList.remove('d-none');
+            } else {
                 toggleBtn.classList.add('d-none');
                 sidebar.classList.remove('open');
                 overlay.style.display = 'none';
-            } else {
-                toggleBtn.classList.remove('d-none');
-                sidebar.classList.remove('open');
-                overlay.style.display = 'none';
             }
-        });
+        }
 
+        // Initialiser au chargement
+        document.addEventListener('DOMContentLoaded', checkScreenSize);
+
+        // Écouter les changements de taille
+        window.addEventListener('resize', checkScreenSize);
+
+        // Fonctions de gestion de la sidebar
         function toggleSidebar() {
             sidebar.classList.toggle('open');
             overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
@@ -366,112 +501,87 @@
             overlay.style.display = 'none';
         }
 
-        // Active menu item
+        // Gestion des liens de la sidebar
         document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-            link.addEventListener('click', function () {
-                document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
-                this.classList.add('active');
+            link.addEventListener('click', function(e) {
+                // Ne pas désactiver le lien actif pour les sous-menus
+                if (!this.classList.contains('dropdown-toggle')) {
+                    document.querySelectorAll('.sidebar .nav-link').forEach(l => {
+                        if (l !== this) l.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                }
+                
+                // Fermer la sidebar sur mobile après clic
                 if (window.innerWidth <= 768) {
                     closeSidebar();
                 }
             });
         });
+
+        // Gestion du lien actif basé sur l'URL
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.sidebar .nav-link');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
     </script>
 
+    <!-- Script de gestion des notifications -->
     <script>
-    // Fonction pour récupérer le CSRF token depuis les cookies
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+        // Fonction pour récupérer le CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
                 }
             }
-        }
-        return cookieValue;
-    }
-
-    // Ouvrir/Fermer le modal
-    function openModal() {
-        document.getElementById('loginModal').style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('loginModal').style.display = 'none';
-    }
-
-    // Fermer en cliquant en dehors
-    window.onclick = function(event) {
-        const modal = document.getElementById('loginModal');
-        if (event.target === modal) {
-            closeModal();
-        }
-    };
-
-    // Intercepter la soumission du formulaire
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-
-        const errorDiv = document.getElementById('loginError');
-        errorDiv.style.display = 'none';
-
-        if (!username) {
-            showError("Veuillez entrer un nom d'utilisateur ou un email.");
-            return;
-        }
-        if (!password) {
-            showError("Veuillez entrer votre mot de passe.");
-            return;
+            return cookieValue;
         }
 
-        // Récupérer le CSRF token
-        const csrftoken = getCookie('csrftoken');
+        // Mettre à jour le compteur de notifications
+        function updateNotificationCount() {
+            fetch("{% url 'home:notifications_api' %}")
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const badge = document.querySelector('.notification-badge');
+                    if (badge) {
+                        if (data.non_lues > 0) {
+                            badge.textContent = data.non_lues;
+                            badge.style.display = 'block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la mise à jour des notifications:', error);
+                    // En cas d'erreur, on réessaie après 30 secondes
+                    setTimeout(updateNotificationCount, 30000);
+                });
+        }
 
-        // Envoi avec fetch
-        fetch('{% url "home:login" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrftoken,
-            },
-            body: new URLSearchParams({
-                'username': username,
-                'password': password,
-                'csrfmiddlewaretoken': csrftoken
-            })
-        })
-        .then(response => {
-            if (response.status === 403) {
-                throw new Error("Erreur CSRF : jeton invalide");
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                window.location.href = data.redirect_url;
-            } else {
-                showError(data.error || "Identifiants incorrects.");
-            }
-        })
-        .catch(err => {
-            console.error('Erreur:', err);
-            showError("Erreur de connexion. Veuillez réessayer.");
-        });
-    });
-
-    function showError(message) {
-        const errorDiv = document.getElementById('loginError');
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-    }
-</script>
+        // Mettre à jour le compteur toutes les 30 secondes
+        setInterval(updateNotificationCount, 30000);
+        // Et au chargement de la page
+        document.addEventListener('DOMContentLoaded', updateNotificationCount);
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

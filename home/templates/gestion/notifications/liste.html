@@ -1,0 +1,327 @@
+{% extends "gestion/base.html" %}
+{% load static humanize %}  {# IMPORTANT : humanize est nécessaire pour naturaltime #}
+{% block title %}Notifications - Capitole School{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Notifications</a></li>
+<li class="nav-item"><a class="nav-link" href="#">Messages</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Notifications</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-bell me-2"></i> Toutes les notifications
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'home:notifications' %}?statut=NON_LU">
+                            <i class="fas fa-envelope me-2"></i> Non lues
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'home:notifications' %}?statut=LU">
+                            <i class="fas fa-envelope-open me-2"></i> Lues
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'home:notifications_archives' %}">
+                            <i class="fas fa-archive me-2"></i> Archives
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">Notifications</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <button type="button" class="btn btn-sm btn-outline-light" id="marquerToutLuBtn">
+                        <i class="fas fa-check-double me-1"></i> Tout marquer lu
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtres -->
+            <div class="mb-4">
+                <div class="btn-group" role="group">
+                    <a href="{% url 'home:notifications' %}" class="btn btn-sm btn-outline-light {% if not statut %}active{% endif %}">Toutes</a>
+                    <a href="{% url 'home:notifications' %}?statut=NON_LU" class="btn btn-sm btn-outline-light {% if statut == 'NON_LU' %}active{% endif %}">Non lues</a>
+                    <a href="{% url 'home:notifications' %}?statut=LU" class="btn btn-sm btn-outline-light {% if statut == 'LU' %}active{% endif %}">Lues</a>
+                </div>
+            </div>
+
+            <!-- Liste des notifications -->
+            {% if notifications %}
+                {% for notification in notifications %}
+                <div class="card mb-3 {% if notification.statut == 'NON_LU' %}border-left-primary{% else %}border-left-secondary{% endif %}" style="border-left-width: 4px;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="card-title mb-1">
+                                    {{ notification.objet }}
+                                    {% if notification.statut == 'NON_LU' %}
+                                        <span class="badge bg-primary">Nouveau</span>
+                                    {% endif %}
+                                </h5>
+                                <p class="card-text text-muted mb-2">
+                                    <small>
+                                        <i class="far fa-clock me-1"></i> 
+                                        {{ notification.date_creation|naturaltime }}
+                                    </small>
+                                </p>
+                                <p class="card-text">{{ notification.message }}</p>
+                                {% if notification.lien %}
+                                    <a href="{{ notification.lien }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-arrow-right me-1"></i> Voir
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenu{{ notification.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenu{{ notification.id }}">
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="marquerLu({{ notification.id }})">
+                                            <i class="fas fa-check me-2"></i> Marquer comme lu
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="archiverNotification({{ notification.id }})">
+                                            <i class="fas fa-archive me-2"></i> Archiver
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#" onclick="supprimerNotification({{ notification.id }})">
+                                            <i class="fas fa-trash me-2"></i> Supprimer
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Pagination -->
+                {% if notifications.has_other_pages %}
+                <nav aria-label="Pagination notifications">
+                    <ul class="pagination pagination-dark justify-content-center">
+                        {% if notifications.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ notifications.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}">&laquo;</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&laquo;</span>
+                        </li>
+                        {% endif %}
+                        
+                        {% for i in notifications.paginator.page_range %}
+                        {% if notifications.number == i %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ i }} <span class="sr-only">(current)</span></span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% if statut %}&statut={{ statut }}{% endif %}">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if notifications.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ notifications.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}">&raquo;</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&raquo;</span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-bell-slash me-2"></i>
+                    Aucune notification {{ statut|default:'disponible' }}.
+                </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Marquer une notification comme lue
+    function marquerLu(notificationId) {
+        fetch('{% url 'home:marquer_notification_lue' %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ id: notificationId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mettre à jour l'interface
+                location.reload();
+            } else {
+                showError(data.error || 'Erreur lors du marquage de la notification');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur de communication avec le serveur');
+        });
+    }
+    
+    // Marquer toutes les notifications comme lues
+    document.getElementById('marquerToutLuBtn').addEventListener('click', function() {
+        fetch('{% url 'home:marquer_tout_lu' %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('Toutes les notifications ont été marquées comme lues');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showError(data.error || 'Erreur lors du marquage des notifications');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur de communication avec le serveur');
+        });
+    });
+    
+    // Archiver une notification
+    function archiverNotification(notificationId) {
+        fetch('{% url 'home:archiver_notification' %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ id: notificationId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('Notification archivée avec succès');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showError(data.error || 'Erreur lors de l\'archivage');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur de communication avec le serveur');
+        });
+    }
+    
+    // Supprimer une notification
+    function supprimerNotification(notificationId) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer cette notification ?')) {
+            fetch('{% url 'home:supprimer_notification' %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ id: notificationId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess('Notification supprimée avec succès');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showError(data.error || 'Erreur lors de la suppression');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showError('Erreur de communication avec le serveur');
+            });
+        }
+    }
+    
+    // Fonctions utilitaires
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showSuccess(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 3000);
+    }
+    
+    function showError(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alert.style.maxWidth = '300px';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

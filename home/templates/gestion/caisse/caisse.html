@@ -1,0 +1,314 @@
+<!-- templates/gestion/caisse/caisse.html -->
+{% extends "gestion/base.html" %}
+{% load static %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{% url 'home:dashboard' %}">Tableau de bord</a></li>
+<li class="nav-item"><a class="nav-link active" href="#">Caisse</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:paiement_dashboard' %}">Paiements</a></li>
+<li class="nav-item"><a class="nav-link" href="{% url 'home:logout' %}">Déconnexion</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Sidebar Fixe -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark text-white" id="sidebarMenu">
+            <div class="position-sticky vh-100 py-3" style="overflow-y: auto;">
+                <h5 class="px-3 mb-3 text-white">Caisse</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="fas fa-cash-register me-2"></i> Caisse enregistreuse
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home:paiement_dashboard' %}">
+                            <i class="fas fa-file-invoice me-2"></i> Historique
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 56px); overflow-y: auto;">
+            <!-- Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 text-white">
+                    <i class="fas fa-cash-register me-2"></i> {{ title }}
+                </h1>
+            </div>
+            
+            <div class="row">
+                <!-- Ecran de caisse (gauche) -->
+                <div class="col-md-6">
+                    <div class="card bg-primary shadow mb-4">
+                        <div class="card-header bg-gradient-success d-flex align-items-center">
+                            <i class="fas fa-receipt me-2"></i>
+                            <h5 class="mb-0">Écran de caisse</h5>
+                        </div>
+                        <div class="card-body bg-light">
+                            <div class="receipt p-3 bg-success rounded" style="font-family: monospace; max-width: 400px; margin: 0 auto;">
+                                <div class="text-center mb-3">
+                                    <h5 class="mb-0">CAPITOLE SCHOOL</h5>
+                                    <small class="text-muted">École bilingue</small>
+                                    <hr class="my-2">
+                                </div>
+                                
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Élève:</span>
+                                    <strong id="receipt-eleve">Sélectionnez un élève</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Frais:</span>
+                                    <strong id="receipt-frais">Sélectionnez les frais</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Montant total:</span>
+                                    <span id="receipt-montant-total">0 XAF</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Montant payé:</span>
+                                    <span id="receipt-montant-pay">0 XAF</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Mode de paiement:</span>
+                                    <span id="receipt-mode-paiement">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span>Réf. transaction:</span>
+                                    <span id="receipt-ref-transaction">-</span>
+                                </div>
+                                
+                                <hr class="my-2">
+                                
+                                <div class="d-flex justify-content-between mb-1">
+                                    <strong>DIFFÉRENCE RENDUE:</strong>
+                                    <strong id="receipt-difference" class="text-success">0 XAF</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <strong>STATUT:</strong>
+                                    <strong id="receipt-statut" class="text-primary">NON PAYÉ</strong>
+                                </div>
+                                
+                                <hr class="my-2">
+                                
+                                <div class="text-center text-ligth mt-3">
+                                    <small class="fs-5">
+                                        Date: {{ today|date:"d/m/Y H:i" }}<br>
+                                        Caisse: {{ user.username }}<br>
+                                        Merci de votre confiance !
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if paiement_enregistre %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Paiement enregistré avec succès !</strong>
+                        <p class="mb-0 mt-2">
+                            <small>
+                                Différence rendue : <strong>{{ montant_rendu|floatformat:0 }} XAF</strong><br>
+                                Référence : {{ paiement_enregistre.numero_transaction|default:"-" }}
+                            </small>
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Formulaire de caisse (droite) -->
+                <div class="col-md-6">
+                    <div class="card bg-dark shadow">
+                        <div class="card-header bg-gradient-primary d-flex align-items-center">
+                            <i class="fas fa-calculator me-2"></i>
+                            <h5 class="mb-0">Saisie des paiements</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" class="needs-validation" novalidate>
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.eleve.id_for_label }}" class="form-label">
+                                        {{ form.eleve.label }}
+                                    </label>
+                                    {{ form.eleve }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.frais.id_for_label }}" class="form-label">
+                                        {{ form.frais.label }}
+                                    </label>
+                                    {{ form.frais }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.montant_paye.id_for_label }}" class="form-label">
+                                        {{ form.montant_paye.label }}
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text fs-3">XAF</span>
+                                        {{ form.montant_paye }}
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.type_paiement.id_for_label }}" class="form-label">
+                                        {{ form.type_paiement.label }}
+                                    </label>
+                                    {{ form.type_paiement }}
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label for="{{ form.numero_transaction.id_for_label }}" class="form-label">
+                                        {{ form.numero_transaction.label }}
+                                    </label>
+                                    {{ form.numero_transaction }}
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fas fa-check-circle me-2"></i> Valider le paiement
+                                    </button>
+                                    <button type="reset" class="btn btn-secondary btn-lg" onclick="resetCaisse()">
+                                        <i class="fas fa-eraser me-2"></i> Réinitialiser
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Mise à jour de l'écran de caisse en temps réel
+    document.addEventListener('DOMContentLoaded', function() {
+        const eleveSelect = document.getElementById('{{ form.eleve.id_for_label }}');
+        const fraisSelect = document.getElementById('{{ form.frais.id_for_label }}');
+        const montantInput = document.getElementById('{{ form.montant_paye.id_for_label }}');
+        const paiementSelect = document.getElementById('{{ form.type_paiement.id_for_label }}');
+        const transactionInput = document.getElementById('{{ form.numero_transaction.id_for_label }}');
+        
+        // Mettre à jour l'écran quand l'élève change
+        eleveSelect.addEventListener('change', function() {
+            const eleveNom = this.options[this.selectedIndex].text;
+            document.getElementById('receipt-eleve').textContent = eleveNom;
+        });
+        
+        // Mettre à jour l'écran quand les frais changent
+        fraisSelect.addEventListener('change', function() {
+            const fraisNom = this.options[this.selectedIndex].text;
+            const montantTotal = this.options[this.selectedIndex].dataset.montant;
+            
+            document.getElementById('receipt-frais').textContent = fraisNom;
+            document.getElementById('receipt-montant-total').textContent = 
+                new Intl.NumberFormat('fr-FR').format(montantTotal) + ' XAF';
+        });
+        
+        // Mettre à jour l'écran quand le montant payé change
+        montantInput.addEventListener('input', function() {
+            const montantTotal = parseFloat(fraisSelect.options[fraisSelect.selectedIndex].dataset.montant);
+            const montantPaye = parseFloat(this.value || '0');
+            
+            document.getElementById('receipt-montant-pay').textContent = 
+                new Intl.NumberFormat('fr-FR').format(montantPaye) + ' XAF';
+            
+            // Calculer la différence
+            const difference = montantPaye - montantTotal;
+            if (difference > 0) {
+                document.getElementById('receipt-difference').textContent = 
+                    new Intl.NumberFormat('fr-FR').format(difference) + ' XAF';
+                document.getElementById('receipt-difference').classList.add('text-success');
+                document.getElementById('receipt-difference').classList.remove('text-danger');
+            } else {
+                document.getElementById('receipt-difference').textContent = '0 XAF';
+                document.getElementById('receipt-difference').classList.remove('text-success');
+                document.getElementById('receipt-difference').classList.add('text-danger');
+            }
+            
+            // Mettre à jour le statut
+            if (montantPaye >= montantTotal) {
+                document.getElementById('receipt-statut').textContent = 'PAYÉ';
+                document.getElementById('receipt-statut').classList.remove('text-warning');
+                document.getElementById('receipt-statut').classList.add('text-success');
+            } else if (montantPaye > 0) {
+                document.getElementById('receipt-statut').textContent = 'PARTIEL';
+                document.getElementById('receipt-statut').classList.remove('text-success');
+                document.getElementById('receipt-statut').classList.add('text-warning');
+            } else {
+                document.getElementById('receipt-statut').textContent = 'NON PAYÉ';
+                document.getElementById('receipt-statut').classList.remove('text-success', 'text-warning');
+            }
+        });
+        
+        // Mettre à jour l'écran quand le mode de paiement change
+        paiementSelect.addEventListener('change', function() {
+            const modePaiement = this.options[this.selectedIndex].text;
+            document.getElementById('receipt-mode-paiement').textContent = modePaiement;
+        });
+        
+        // Mettre à jour l'écran quand la référence de transaction change
+        transactionInput.addEventListener('input', function() {
+            document.getElementById('receipt-ref-transaction').textContent = this.value || '-';
+        });
+        
+        // Remplir les données initiales si possible
+        if (eleveSelect.value) {
+            const eleveNom = eleveSelect.options[eleveSelect.selectedIndex].text;
+            document.getElementById('receipt-eleve').textContent = eleveNom;
+        }
+        
+        if (fraisSelect.value) {
+            const fraisNom = fraisSelect.options[fraisSelect.selectedIndex].text;
+            const montantTotal = fraisSelect.options[fraisSelect.selectedIndex].dataset.montant;
+            
+            document.getElementById('receipt-frais').textContent = fraisNom;
+            document.getElementById('receipt-montant-total').textContent = 
+                new Intl.NumberFormat('fr-FR').format(montantTotal) + ' XAF';
+        }
+        
+        if (montantInput.value) {
+            montantInput.dispatchEvent(new Event('input'));
+        }
+        
+        if (paiementSelect.value) {
+            const modePaiement = paiementSelect.options[paiementSelect.selectedIndex].text;
+            document.getElementById('receipt-mode-paiement').textContent = modePaiement;
+        }
+        
+        if (transactionInput.value) {
+            document.getElementById('receipt-ref-transaction').textContent = transactionInput.value;
+        }
+    });
+    
+    function resetCaisse() {
+        // Réinitialiser le formulaire
+        document.querySelector('form').reset();
+        
+        // Réinitialiser l'écran de caisse
+        document.getElementById('receipt-eleve').textContent = 'Sélectionnez un élève';
+        document.getElementById('receipt-frais').textContent = 'Sélectionnez les frais';
+        document.getElementById('receipt-montant-total').textContent = '0 XAF';
+        document.getElementById('receipt-montant-pay').textContent = '0 XAF';
+        document.getElementById('receipt-mode-paiement').textContent = '-';
+        document.getElementById('receipt-ref-transaction').textContent = '-';
+        document.getElementById('receipt-difference').textContent = '0 XAF';
+        document.getElementById('receipt-difference').classList.remove('text-success', 'text-danger');
+        document.getElementById('receipt-statut').textContent = 'NON PAYÉ';
+        document.getElementById('receipt-statut').classList.remove('text-success', 'text-warning');
+        
+        // Remettre le focus sur le champ montant
+        setTimeout(() => {
+            document.getElementById('{{ form.montant_paye.id_for_label }}').focus();
+        }, 100);
+    }
+</script>
+{% endblock %}

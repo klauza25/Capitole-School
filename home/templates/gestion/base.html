@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Capitole School{% endblock %}</title>
    {% load static %}
-{% load notification_extras %}  {# Ajoutez cette ligne #}
+{% load notification_extras %}
 
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -126,6 +126,70 @@
             background-color: #121212;
             transition: left 0.3s ease;
             box-sizing: border-box;
+        }
+
+        /* Page de chargement */
+        #loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        #loading-logo h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+
+        #loading-icon {
+            width: 80px;
+            height: 80px;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .loading-spinner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #667eea;
+            border-radius: 50%;
+        }
+
+        .progress-container {
+            width: 200px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin: 2rem 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--primary-gradient);
+            border-radius: 3px;
+        }
+
+        .loading-text {
+            font-size: 1.1rem;
+            color: #ccc;
+            margin-bottom: 1rem;
         }
 
         /* Responsive Mobile */
@@ -251,6 +315,23 @@
     </script>
 </head>
 <body>
+    <!-- Page de chargement intégrée -->
+    <div id="loading-container">
+        <div id="loading-logo">
+            <h1>Capitole School</h1>
+            <span>École bilingue</span>
+        </div>
+        
+        <div id="loading-icon">
+            <div class="loading-spinner"></div>
+        </div>
+        
+        <div class="loading-text">Chargement de votre tableau de bord</div>
+        
+        <div class="progress-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+    </div>
 
     <!-- Navbar fixe -->
     <nav class="navbar navbar-dark">
@@ -460,7 +541,7 @@
     <div id="overlay" onclick="closeSidebar()"></div>
 
     <!-- Contenu scrollable -->
-    <main id="main-content">
+    <main id="main-content" style="display: none;">
         {% block content %}
         {% endblock %}
     </main>
@@ -469,6 +550,54 @@
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
 
     <script>
+        // Script de gestion de la page de chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingContainer = document.getElementById('loading-container');
+            const progressBar = document.getElementById('progress-bar');
+            const mainContent = document.getElementById('main-content');
+            
+            // Animation du spinner
+            let rotation = 0;
+            const spinner = document.querySelector('.loading-spinner');
+            function animateSpinner() {
+                rotation += 2;
+                spinner.style.transform = `rotate(${rotation}deg)`;
+                requestAnimationFrame(animateSpinner);
+            }
+            animateSpinner();
+            
+            // Animation de la barre de progression
+            let width = 0;
+            const progressInterval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(progressInterval);
+                    // Cacher la page de chargement et afficher le contenu
+                    loadingContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingContainer.style.display = 'none';
+                        mainContent.style.display = 'block';
+                        mainContent.style.opacity = '0';
+                        setTimeout(() => {
+                            mainContent.style.opacity = '1';
+                            mainContent.style.transition = 'opacity 0.5s ease';
+                        }, 100);
+                    }, 300);
+                } else {
+                    width += 1;
+                    progressBar.style.width = width + '%';
+                }
+            }, 30);
+            
+            // Durée minimale de chargement
+            setTimeout(() => {
+                if (width < 100) {
+                    width = 100;
+                    progressBar.style.width = '100%';
+                }
+            }, 2000);
+        });
+
+        // Reste du code existant pour la sidebar
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
         const toggleBtn = document.querySelector('.mobile-toggle');

@@ -40,6 +40,43 @@ from .models import Presence, Eleve
 @login_required
 def directeur_dashboard(request):
     # Vérifier que l'utilisateur est bien un directeur
+    
+    if request.user.role != 'directeur':
+        messages.error(request, "Accès refusé : vous n'êtes pas directeur.")
+        return redirect('home:login')
+    
+    # Statistiques globales
+    total_eleves = Eleve.objects.count()
+    total_enseignants = Utilisateur.objects.filter(role='enseignant').count()
+    total_classes = Classe.objects.count()
+    
+    # Taux de présence global
+    total_presences = Presence.objects.count()
+    presences_valides = Presence.objects.filter(present=True).count()
+    taux_presence_global = round(presences_valides / total_presences * 100, 1) if total_presences > 0 else 100
+    
+    # Statistiques financières
+    annee_en_cours = date.today().year
+    trimestre_en_cours = 'T1'  # À adapter selon la date
+    
+    # Total des frais scolaires pour l'année
+    total_frais = Frais.objects.filter(
+        Q(date_limite__year=annee_en_cours)
+    ).aggregate(total=Sum('montant'))['total'] or 0
+    
+    # ✅ CORRECTION : Utiliser 'date_paiement' au lieu de 'date'
+    total_paiements = Paiement.objects.filter(
+        status='Payé',  # ✅ CORRECTION : Utiliser 'status' au lieu de 'statut'
+        date_paiement__year=annee_en_cours
+    ).aggregate(total=Sum('montant_paye'))['total'] or 0
+    
+    # Taux de paiement global
+    taux_paiement = round(total_paiements / total_frais * 100, 1) if total_frais > 0 else 100
+    
+    # ... le reste du code reste identi
+    
+    
+    
     if request.user.role != 'directeur':
         messages.error(request, "Accès refusé : vous n'êtes pas directeur.")
         return redirect('home:login')
@@ -206,6 +243,13 @@ def directeur_dashboard(request):
         'evenements_recents': evenements_recents,
         'trimestre_en_cours': trimestre_en_cours,
         'annee_en_cours': annee_en_cours,
+        'total_eleves': total_eleves,
+        'total_enseignants': total_enseignants,
+        'total_classes': total_classes,
+        'taux_presence_global': taux_presence_global,
+        'total_frais': total_frais,
+        'total_paiements': total_paiements,
+        'taux_paiement': taux_paiement,
     }
     
     return render(request, 'gestion/dashboards/directeur_dashboard.html', context)
@@ -437,8 +481,6 @@ def eleve_dashboard(request):
         messages.error(request, "Profil élève introuvable.")
         return redirect('home:login')
 
-
-
     # Gestion de l'upload de photo
     if request.method == 'POST' and request.FILES.get('photo'):
         photo = request.FILES['photo']
@@ -469,7 +511,6 @@ def eleve_dashboard(request):
 
     # ... le reste de votre code existant pour le dashboard ...
     
-    # Si ce n'est pas une requête AJAX pour la photo
     # Notes triées par trimestre
     notes = eleve.notes.all().select_related('matiere').order_by('trimestre', 'matiere__nom')
     
@@ -541,18 +582,17 @@ def eleve_dashboard(request):
             'moyenne': moyenne_generale
         })
 
-    # Calculer le taux de présence
-    total_presences = eleve.presence_set.count()
-    presences_valides = eleve.presence_set.filter(present=True).count()
+    # ✅ CORRECTION : Utiliser 'presences' au lieu de 'presence_set'
+    total_presences = eleve.presences.count()
+    presences_valides = eleve.presences.filter(present=True).count()
     taux_presence = round(presences_valides / total_presences * 100, 1) if total_presences > 0 else 100
     absences_count = total_presences - presences_valides
 
-    # Récupérer les présences récentes
-    presences = eleve.presence_set.all().order_by('-date')[:10]
+    # ✅ CORRECTION : Utiliser 'presences' au lieu de 'presence_set'
+    presences = eleve.presences.all().order_by('-date')[:10]
     
     # Ajouter ces variables au contexte
     today = timezone.now().date()
-    eleve = request.user.eleve_profile
     
     # Vérifier si l'élève peut pointer sa présence aujourd'hui
     peut_pointer = not Presence.objects.filter(eleve=eleve, date=today).exists()
@@ -570,7 +610,6 @@ def eleve_dashboard(request):
         'deja_pointe': deja_pointe,
         'presence_aujourdhui': presence_aujourdhui,
         'today': today,
-        
     }
 
     return render(request, 'gestion/dashboards/eleve.html', context)
